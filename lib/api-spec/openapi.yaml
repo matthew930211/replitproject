@@ -414,33 +414,27 @@ paths:
     post:
       operationId: syncUser
       tags: [users]
-      summary: Sync/provision user on first login (Clerk webhook or client call)
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                name:
-                  type: string
+      summary: Link a Clerk account to an admin-pre-created user on first login
+      description: |
+        Fetches the caller's identity from the Clerk API (server-side) and looks for
+        a matching pre-provisioned pending user record by verified email. Returns 200
+        if found and linked (or already linked). Returns 403 if the caller has not been
+        pre-provisioned by an administrator. Does not auto-create new users.
       responses:
         "200":
-          description: Existing user found
+          description: User found or successfully linked
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
-        "201":
-          description: New user provisioned as BIDDER
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
+        "400":
+          description: Clerk account has no verified primary email
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Account not provisioned — contact an administrator to get access
+        "503":
+          description: Clerk API unavailable — retry later
 
   /storage/public-objects/{filePath}:
     get:
@@ -832,10 +826,13 @@ components:
       properties:
         totalUsers:
           type: integer
+          description: Total user count (CHIEF_ADMIN only)
         totalBidders:
           type: integer
+          description: Scoped bidder count (admin=all, manager=team, bidder=omitted)
         totalManagers:
           type: integer
+          description: Manager count (CHIEF_ADMIN only)
         reportsToday:
           type: integer
         reportsThisWeek:
@@ -846,15 +843,12 @@ components:
           type: integer
         totalMessages:
           type: integer
+          description: Total messages (CHIEF_ADMIN only)
       required:
-        - totalUsers
-        - totalBidders
-        - totalManagers
         - reportsToday
         - reportsThisWeek
         - onlineNow
         - totalReports
-        - totalMessages
 
     ReportSummaryItem:
       type: object

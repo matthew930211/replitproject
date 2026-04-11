@@ -22,16 +22,22 @@ router.get("/stats/dashboard", requireAuth, async (req, res): Promise<void> => {
     db.select().from(presenceTable).where(sql`${presenceTable.lastSeenAt} > ${threshold}`),
   ]);
 
-  const scopedBidders = me.role === "BIDDER_MANAGER"
-    ? users.filter((u) => u.role === "BIDDER" && u.managerId === me.id)
-    : users.filter((u) => u.role === "BIDDER");
+  let scopedBidders: typeof users;
+  let scopedReports: typeof reports;
 
-  const scopedBidderIds = new Set(scopedBidders.map((b) => b.id));
-  const scopedReports = me.role === "BIDDER_MANAGER"
-    ? reports.filter((r) => scopedBidderIds.has(r.bidderId))
-    : reports;
+  if (me.role === "BIDDER") {
+    scopedBidders = users.filter((u) => u.id === me.id);
+    scopedReports = reports.filter((r) => r.bidderId === me.id);
+  } else if (me.role === "BIDDER_MANAGER") {
+    scopedBidders = users.filter((u) => u.role === "BIDDER" && u.managerId === me.id);
+    const bidderIds = new Set(scopedBidders.map((b) => b.id));
+    scopedReports = reports.filter((r) => bidderIds.has(r.bidderId));
+  } else {
+    scopedBidders = users.filter((u) => u.role === "BIDDER");
+    scopedReports = reports;
+  }
 
-  const totalBidders = scopedBidders.length;
+  const totalBidders = me.role === "BIDDER" ? undefined : scopedBidders.length;
   const totalManagers = me.role === "CHIEF_ADMIN" ? users.filter((u) => u.role === "BIDDER_MANAGER").length : undefined;
   const reportsToday = scopedReports.filter((r) => r.reportDate === today).length;
   const reportsThisWeek = scopedReports.filter((r) => r.reportDate >= weekStartStr).length;

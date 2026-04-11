@@ -36,7 +36,6 @@ import type {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   SendMessageBody,
-  SyncUserBody,
   UnauthorizedResponse,
   UpdateUserBody,
   UpsertProfileBody,
@@ -1647,39 +1646,39 @@ export const useRequestUploadUrl = <
 };
 
 /**
- * @summary Sync/provision user on first login (Clerk webhook or client call)
+ * Fetches the caller's identity from the Clerk API (server-side) and looks for
+a matching pre-provisioned pending user record by verified email. Returns 200
+if found and linked (or already linked). Returns 403 if the caller has not been
+pre-provisioned by an administrator. Does not auto-create new users.
+
+ * @summary Link a Clerk account to an admin-pre-created user on first login
  */
 export const getSyncUserUrl = () => {
   return `/api/users/sync`;
 };
 
-export const syncUser = async (
-  syncUserBody?: SyncUserBody,
-  options?: RequestInit,
-): Promise<User> => {
+export const syncUser = async (options?: RequestInit): Promise<User> => {
   return customFetch<User>(getSyncUserUrl(), {
     ...options,
     method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(syncUserBody),
   });
 };
 
 export const getSyncUserMutationOptions = <
-  TError = ErrorType<UnauthorizedResponse>,
+  TError = ErrorType<void | UnauthorizedResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof syncUser>>,
     TError,
-    { data: BodyType<SyncUserBody> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof syncUser>>,
   TError,
-  { data: BodyType<SyncUserBody> },
+  void,
   TContext
 > => {
   const mutationKey = ["syncUser"];
@@ -1693,11 +1692,9 @@ export const getSyncUserMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof syncUser>>,
-    { data: BodyType<SyncUserBody> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return syncUser(data, requestOptions);
+    void
+  > = () => {
+    return syncUser(requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1706,27 +1703,27 @@ export const getSyncUserMutationOptions = <
 export type SyncUserMutationResult = NonNullable<
   Awaited<ReturnType<typeof syncUser>>
 >;
-export type SyncUserMutationBody = BodyType<SyncUserBody>;
-export type SyncUserMutationError = ErrorType<UnauthorizedResponse>;
+
+export type SyncUserMutationError = ErrorType<void | UnauthorizedResponse>;
 
 /**
- * @summary Sync/provision user on first login (Clerk webhook or client call)
+ * @summary Link a Clerk account to an admin-pre-created user on first login
  */
 export const useSyncUser = <
-  TError = ErrorType<UnauthorizedResponse>,
+  TError = ErrorType<void | UnauthorizedResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof syncUser>>,
     TError,
-    { data: BodyType<SyncUserBody> },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof syncUser>>,
   TError,
-  { data: BodyType<SyncUserBody> },
+  void,
   TContext
 > => {
   return useMutation(getSyncUserMutationOptions(options));

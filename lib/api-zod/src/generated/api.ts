@@ -331,13 +331,13 @@ export const RequestUploadUrlResponse = zod.object({
 });
 
 /**
- * @summary Sync/provision user on first login (Clerk webhook or client call)
- */
-export const SyncUserBody = zod.object({
-  email: zod.string().optional(),
-  name: zod.string().optional(),
-});
+ * Fetches the caller's identity from the Clerk API (server-side) and looks for
+a matching pre-provisioned pending user record by verified email. Returns 200
+if found and linked (or already linked). Returns 403 if the caller has not been
+pre-provisioned by an administrator. Does not auto-create new users.
 
+ * @summary Link a Clerk account to an admin-pre-created user on first login
+ */
 export const SyncUserResponse = zod.object({
   id: zod.number(),
   clerkId: zod.string(),
@@ -368,14 +368,26 @@ export const GetObjectParams = zod.object({
  * @summary Get dashboard statistics
  */
 export const GetDashboardStatsResponse = zod.object({
-  totalUsers: zod.number(),
-  totalBidders: zod.number(),
-  totalManagers: zod.number(),
+  totalUsers: zod
+    .number()
+    .optional()
+    .describe("Total user count (CHIEF_ADMIN only)"),
+  totalBidders: zod
+    .number()
+    .optional()
+    .describe("Scoped bidder count (admin=all, manager=team, bidder=omitted)"),
+  totalManagers: zod
+    .number()
+    .optional()
+    .describe("Manager count (CHIEF_ADMIN only)"),
   reportsToday: zod.number(),
   reportsThisWeek: zod.number(),
   onlineNow: zod.number(),
   totalReports: zod.number(),
-  totalMessages: zod.number(),
+  totalMessages: zod
+    .number()
+    .optional()
+    .describe("Total messages (CHIEF_ADMIN only)"),
 });
 
 /**

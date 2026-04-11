@@ -7,12 +7,16 @@
  */
 
 export interface DashboardStats {
-  totalUsers: number;
-  totalBidders: number;
-  totalManagers: number;
+  /** Total user count (CHIEF_ADMIN only) */
+  totalUsers?: number;
+  /** Scoped bidder count (admin=all, manager=team, bidder=omitted) */
+  totalBidders?: number;
+  /** Manager count (CHIEF_ADMIN only) */
+  totalManagers?: number;
   reportsToday: number;
   reportsThisWeek: number;
   onlineNow: number;
   totalReports: number;
-  totalMessages: number;
+  /** Total messages (CHIEF_ADMIN only) */
+  totalMessages?: number;
 }
