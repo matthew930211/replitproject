@@ -21,7 +21,7 @@ router.get("/presence", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.post("/presence", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
+  const me = req.appUser!;
   await db.insert(presenceTable)
     .values({ userId: me.id, lastSeenAt: new Date() })
     .onConflictDoUpdate({ target: presenceTable.userId, set: { lastSeenAt: new Date() } });

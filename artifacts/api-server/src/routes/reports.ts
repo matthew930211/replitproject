@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql } from "drizzle-orm";
 import { db, reportsTable, feedbackTable, usersTable } from "@workspace/db";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
 router.get("/reports", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
+  const me = req.appUser!;
   const bidderId = req.query.bidderId ? parseInt(req.query.bidderId as string, 10) : undefined;
   const date = req.query.date as string | undefined;
 
@@ -21,10 +21,6 @@ router.get("/reports", requireAuth, async (req, res): Promise<void> => {
 
   const filtered = reports.filter((r) => {
     if (me.role === "BIDDER" && r.bidderId !== me.id) return false;
-    if (me.role === "BIDDER_MANAGER") {
-      const bidder = userMap[r.bidderId];
-      if (bidder && bidder.managerId !== me.id && r.bidderId !== me.id) return false;
-    }
     if (bidderId && r.bidderId !== bidderId) return false;
     if (date && r.reportDate !== date) return false;
     return true;
@@ -44,8 +40,8 @@ router.get("/reports", requireAuth, async (req, res): Promise<void> => {
   })));
 });
 
-router.post("/reports", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
+router.post("/reports", requireAuth, requireRole("BIDDER"), async (req, res): Promise<void> => {
+  const me = req.appUser!;
   const { reportDate, projectsCount, projectsBid, outcomes, notes } = req.body;
   if (!reportDate || projectsCount == null || !projectsBid || !outcomes) {
     res.status(400).json({ error: "Missing required fields" });
@@ -74,12 +70,16 @@ router.post("/reports", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/reports/:id", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
+  const me = req.appUser!;
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(rawId, 10);
   const [report] = await db.select().from(reportsTable).where(eq(reportsTable.id, id));
   if (!report) {
     res.status(404).json({ error: "Report not found" });
+    return;
+  }
+  if (me.role === "BIDDER" && report.bidderId !== me.id) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
   const users = await db.select().from(usersTable);
@@ -100,8 +100,18 @@ router.get("/reports/:id", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/reports/:reportId/feedback", requireAuth, async (req, res): Promise<void> => {
+  const me = req.appUser!;
   const rawId = Array.isArray(req.params.reportId) ? req.params.reportId[0] : req.params.reportId;
   const reportId = parseInt(rawId, 10);
+
+  if (me.role === "BIDDER") {
+    const [report] = await db.select().from(reportsTable).where(eq(reportsTable.id, reportId));
+    if (!report || report.bidderId !== me.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  }
+
   const feedback = await db.select().from(feedbackTable).where(eq(feedbackTable.reportId, reportId)).orderBy(feedbackTable.createdAt);
   const users = await db.select().from(usersTable);
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
@@ -116,12 +126,8 @@ router.get("/reports/:reportId/feedback", requireAuth, async (req, res): Promise
   })));
 });
 
-router.post("/reports/:reportId/feedback", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
-  if (me.role === "BIDDER") {
-    res.status(403).json({ error: "Bidders cannot post feedback" });
-    return;
-  }
+router.post("/reports/:reportId/feedback", requireAuth, requireRole("CHIEF_ADMIN", "BIDDER_MANAGER"), async (req, res): Promise<void> => {
+  const me = req.appUser!;
   const rawId = Array.isArray(req.params.reportId) ? req.params.reportId[0] : req.params.reportId;
   const reportId = parseInt(rawId, 10);
   const { content } = req.body;

@@ -7,7 +7,7 @@ import { getAuth } from "@clerk/express";
 const router: IRouter = Router();
 
 router.get("/users/me", requireAuth, async (req, res): Promise<void> => {
-  const user = (req as any).appUser;
+  const user = req.appUser!;
   res.json({
     id: user.id,
     clerkId: user.clerkId,
@@ -21,15 +21,11 @@ router.get("/users/me", requireAuth, async (req, res): Promise<void> => {
   });
 });
 
-router.get("/users", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
+router.get("/users", requireAuth, requireRole("CHIEF_ADMIN", "BIDDER_MANAGER"), async (req, res): Promise<void> => {
   const roleFilter = req.query.role as string | undefined;
-  let query = db.select().from(usersTable);
-  const users = await query;
+  const users = await db.select().from(usersTable);
   const filtered = users.filter((u) => {
     if (roleFilter && u.role !== roleFilter) return false;
-    if (me.role === "BIDDER") return u.id === me.id;
-    if (me.role === "BIDDER_MANAGER") return u.managerId === me.id || u.id === me.id;
     return true;
   });
   res.json(filtered.map((u) => ({
@@ -65,7 +61,7 @@ router.post("/users", requireAuth, requireRole("CHIEF_ADMIN"), async (req, res):
   });
 });
 
-router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
+router.get("/users/:id", requireAuth, requireRole("CHIEF_ADMIN", "BIDDER_MANAGER"), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(rawId, 10);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
@@ -86,22 +82,20 @@ router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
   });
 });
 
-router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
+router.patch("/users/:id", requireAuth, requireRole("CHIEF_ADMIN"), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(rawId, 10);
-  if (me.role !== "CHIEF_ADMIN" && me.id !== id) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-  const { name, role, managerId, isActive } = req.body;
-  const updateData: any = {};
+  const { name, role, managerId, isActive } = req.body as {
+    name?: string;
+    role?: "CHIEF_ADMIN" | "BIDDER_MANAGER" | "BIDDER";
+    managerId?: number | null;
+    isActive?: boolean;
+  };
+  const updateData: Partial<{ name: string; role: "CHIEF_ADMIN" | "BIDDER_MANAGER" | "BIDDER"; managerId: number | null; isActive: boolean }> = {};
   if (name != null) updateData.name = name;
-  if (me.role === "CHIEF_ADMIN") {
-    if (role != null) updateData.role = role;
-    if (managerId !== undefined) updateData.managerId = managerId;
-    if (isActive != null) updateData.isActive = isActive;
-  }
+  if (role != null) updateData.role = role;
+  if (managerId !== undefined) updateData.managerId = managerId;
+  if (isActive != null) updateData.isActive = isActive;
   const [user] = await db.update(usersTable).set(updateData).where(eq(usersTable.id, id)).returning();
   if (!user) {
     res.status(404).json({ error: "User not found" });
@@ -120,7 +114,6 @@ router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
   });
 });
 
-// Auto-register user on first sign-in
 router.post("/users/sync", async (req, res): Promise<void> => {
   const auth = getAuth(req);
   const clerkId = auth?.userId;
@@ -128,7 +121,7 @@ router.post("/users/sync", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { email, name } = req.body;
+  const { email, name } = req.body as { email?: string; name?: string };
   const existing = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
   if (existing.length > 0) {
     const u = existing[0];

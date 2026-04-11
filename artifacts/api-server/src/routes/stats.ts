@@ -39,7 +39,7 @@ router.get("/stats/dashboard", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/stats/reports-summary", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
+  const me = req.appUser!;
   const users = await db.select().from(usersTable);
   const reports = await db.select().from(reportsTable);
 

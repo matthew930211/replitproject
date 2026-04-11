@@ -21,7 +21,7 @@ router.get("/messages", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.post("/messages", requireAuth, async (req, res): Promise<void> => {
-  const me = (req as any).appUser;
+  const me = req.appUser!;
   const { content } = req.body;
   if (!content) {
     res.status(400).json({ error: "Content is required" });

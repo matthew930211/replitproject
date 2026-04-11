@@ -15,13 +15,13 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     res.status(401).json({ error: "User not found in system" });
     return;
   }
-  (req as any).appUser = user;
+  req.appUser = user;
   next();
 };
 
 export const requireRole = (...roles: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const user = (req as any).appUser;
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const user = req.appUser;
     if (!user || !roles.includes(user.role)) {
       res.status(403).json({ error: "Forbidden" });
       return;
