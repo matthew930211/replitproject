@@ -7,12 +7,16 @@
  */
 
 export interface UpdateProfileBody {
-  candidateName?: string;
-  bio?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  linkedin?: string;
+  github?: string;
   phone?: string;
   address?: string;
   birthDate?: string;
   photoObjectPath?: string;
+  bio?: string;
   skills?: string;
   experience?: string;
 }

@@ -953,9 +953,15 @@ components:
       properties:
         id:
           type: integer
-        candidateName:
+        firstName:
           type: string
-        bio:
+        lastName:
+          type: string
+        email:
+          type: ["string", "null"]
+        linkedin:
+          type: ["string", "null"]
+        github:
           type: ["string", "null"]
         phone:
           type: ["string", "null"]
@@ -964,6 +970,8 @@ components:
         birthDate:
           type: ["string", "null"]
         photoObjectPath:
+          type: ["string", "null"]
+        bio:
           type: ["string", "null"]
         skills:
           type: ["string", "null"]
@@ -983,7 +991,8 @@ components:
             $ref: "#/components/schemas/ProfileAccessGrant"
       required:
         - id
-        - candidateName
+        - firstName
+        - lastName
         - createdAt
         - updatedAt
         - resumes
@@ -992,9 +1001,15 @@ components:
     CreateProfileBody:
       type: object
       properties:
-        candidateName:
+        firstName:
           type: string
-        bio:
+        lastName:
+          type: string
+        email:
+          type: string
+        linkedin:
+          type: string
+        github:
           type: string
         phone:
           type: string
@@ -1003,20 +1018,29 @@ components:
         birthDate:
           type: string
         photoObjectPath:
+          type: string
+        bio:
           type: string
         skills:
           type: string
         experience:
           type: string
       required:
-        - candidateName
+        - firstName
+        - lastName
 
     UpdateProfileBody:
       type: object
       properties:
-        candidateName:
+        firstName:
           type: string
-        bio:
+        lastName:
+          type: string
+        email:
+          type: string
+        linkedin:
+          type: string
+        github:
           type: string
         phone:
           type: string
@@ -1025,6 +1049,8 @@ components:
         birthDate:
           type: string
         photoObjectPath:
+          type: string
+        bio:
           type: string
         skills:
           type: string

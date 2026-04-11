@@ -20,6 +20,20 @@ import { User as UserIcon, Plus, FileText, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
+const emptyForm = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  linkedin: "",
+  github: "",
+  phone: "",
+  birthDate: "",
+  address: "",
+  bio: "",
+  skills: "",
+  experience: "",
+};
+
 export default function Profiles() {
   const { data: currentUser } = useGetMe();
   const { data: profiles, isLoading } = useListProfiles();
@@ -31,29 +45,31 @@ export default function Profiles() {
   const isBidder = currentUser?.role === "BIDDER";
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({
-    candidateName: "",
-    bio: "",
-    skills: "",
-    experience: "",
-    phone: "",
-    address: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   function handleCreate() {
-    if (!form.candidateName.trim()) {
-      toast({ title: "Candidate name is required", variant: "destructive" });
+    if (!form.firstName.trim()) {
+      toast({ title: "First name is required", variant: "destructive" });
+      return;
+    }
+    if (!form.lastName.trim()) {
+      toast({ title: "Last name is required", variant: "destructive" });
       return;
     }
     createProfile.mutate(
       {
         data: {
-          candidateName: form.candidateName.trim(),
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          email: form.email || undefined,
+          linkedin: form.linkedin || undefined,
+          github: form.github || undefined,
+          phone: form.phone || undefined,
+          birthDate: form.birthDate || undefined,
+          address: form.address || undefined,
           bio: form.bio || undefined,
           skills: form.skills || undefined,
           experience: form.experience || undefined,
-          phone: form.phone || undefined,
-          address: form.address || undefined,
         },
       },
       {
@@ -61,7 +77,7 @@ export default function Profiles() {
           queryClient.invalidateQueries({ queryKey: getListProfilesQueryKey() });
           toast({ title: "Profile created" });
           setDialogOpen(false);
-          setForm({ candidateName: "", bio: "", skills: "", experience: "", phone: "", address: "" });
+          setForm(emptyForm);
         },
         onError: () => {
           toast({ title: "Failed to create profile", variant: "destructive" });
@@ -122,81 +138,153 @@ export default function Profiles() {
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {profiles.map((profile) => (
-                <Link key={profile.id} href={`/profiles/${profile.id}`}>
-                  <Card
-                    className="h-full hover:border-primary/50 transition-colors cursor-pointer group"
-                    data-testid={`card-profile-${profile.id}`}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="w-12 h-12 border-2 border-background group-hover:border-primary/20 transition-colors">
-                          {profile.photoObjectPath && (
-                            <AvatarImage
-                              src={`/api/storage/objects/${profile.photoObjectPath.replace("/objects/", "")}`}
-                            />
-                          )}
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {profile.candidateName?.charAt(0).toUpperCase() || (
-                              <UserIcon className="h-6 w-6" />
+              {profiles.map((profile) => {
+                const fullName = `${profile.firstName} ${profile.lastName}`;
+                return (
+                  <Link key={profile.id} href={`/profiles/${profile.id}`}>
+                    <Card
+                      className="h-full hover:border-primary/50 transition-colors cursor-pointer group"
+                      data-testid={`card-profile-${profile.id}`}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-4">
+                          <Avatar className="w-12 h-12 border-2 border-background group-hover:border-primary/20 transition-colors">
+                            {profile.photoObjectPath && (
+                              <AvatarImage
+                                src={`/api/storage/objects/${profile.photoObjectPath.replace("/objects/", "")}`}
+                              />
                             )}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <CardTitle className="text-lg">{profile.candidateName}</CardTitle>
-                          <CardDescription className="flex items-center gap-1 mt-1 text-xs">
-                            <FileText className="h-3 w-3" />
-                            {profile.resumes.length} resume{profile.resumes.length !== 1 ? "s" : ""}
-                          </CardDescription>
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {profile.firstName.charAt(0).toUpperCase() || <UserIcon className="h-6 w-6" />}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <CardTitle className="text-lg">{fullName}</CardTitle>
+                            <CardDescription className="flex items-center gap-1 mt-1 text-xs">
+                              <FileText className="h-3 w-3" />
+                              {profile.resumes.length} resume{profile.resumes.length !== 1 ? "s" : ""}
+                            </CardDescription>
+                          </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-3 mb-4 min-h-[60px]">
-                        {profile.bio || "No bio provided."}
-                      </p>
-                      <div className="flex flex-wrap gap-2 mt-auto">
-                        {profile.skills ? (
-                          profile.skills
-                            .split(",")
-                            .slice(0, 3)
-                            .map((skill, i) => (
-                              <Badge key={i} variant="secondary" className="text-[10px] font-normal">
-                                {skill.trim()}
-                              </Badge>
-                            ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No skills listed</span>
-                        )}
-                        {profile.skills && profile.skills.split(",").length > 3 && (
-                          <Badge variant="secondary" className="text-[10px] font-normal">
-                            +{profile.skills.split(",").length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground line-clamp-3 mb-4 min-h-[60px]">
+                          {profile.bio || "No bio provided."}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-auto">
+                          {profile.skills ? (
+                            profile.skills
+                              .split(",")
+                              .slice(0, 3)
+                              .map((skill, i) => (
+                                <Badge key={i} variant="secondary" className="text-[10px] font-normal">
+                                  {skill.trim()}
+                                </Badge>
+                              ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No skills listed</span>
+                          )}
+                          {profile.skills && profile.skills.split(",").length > 3 && (
+                            <Badge variant="secondary" className="text-[10px] font-normal">
+                              +{profile.skills.split(",").length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Candidate Profile</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input
+                  id="firstName"
+                  value={form.firstName}
+                  onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+                  placeholder="Jane"
+                  data-testid="input-first-name"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="lastName">Last Name *</Label>
+                <Input
+                  id="lastName"
+                  value={form.lastName}
+                  onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+                  placeholder="Smith"
+                  data-testid="input-last-name"
+                />
+              </div>
+            </div>
             <div className="space-y-1">
-              <Label htmlFor="candidateName">Candidate Name *</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="candidateName"
-                value={form.candidateName}
-                onChange={(e) => setForm((f) => ({ ...f, candidateName: e.target.value }))}
-                placeholder="e.g. Jane Smith"
-                data-testid="input-candidate-name"
+                id="email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="jane@example.com"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="linkedin">LinkedIn</Label>
+                <Input
+                  id="linkedin"
+                  value={form.linkedin}
+                  onChange={(e) => setForm((f) => ({ ...f, linkedin: e.target.value }))}
+                  placeholder="linkedin.com/in/jane"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="github">GitHub</Label>
+                <Input
+                  id="github"
+                  value={form.github}
+                  onChange={(e) => setForm((f) => ({ ...f, github: e.target.value }))}
+                  placeholder="github.com/jane"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={form.phone}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="+1 555 000 0000"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="birthDate">Birthday</Label>
+                <Input
+                  id="birthDate"
+                  type="date"
+                  value={form.birthDate}
+                  onChange={(e) => setForm((f) => ({ ...f, birthDate: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                placeholder="Austin, TX"
               />
             </div>
             <div className="space-y-1">
@@ -205,24 +293,8 @@ export default function Profiles() {
                 id="skills"
                 value={form.skills}
                 onChange={(e) => setForm((f) => ({ ...f, skills: e.target.value }))}
-                placeholder="e.g. React, Node.js, TypeScript"
+                placeholder="React, Node.js, TypeScript"
                 data-testid="input-profile-skills"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="address">Location / Address</Label>
-              <Input
-                id="address"
-                value={form.address}
-                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               />
             </div>
             <div className="space-y-1">

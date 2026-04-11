@@ -10,9 +10,14 @@ import type { ProfileResume } from "./profileResume";
 
 export interface CandidateProfile {
   id: number;
-  candidateName: string;
+  firstName: string;
+  lastName: string;
   /** @nullable */
-  bio?: string | null;
+  email?: string | null;
+  /** @nullable */
+  linkedin?: string | null;
+  /** @nullable */
+  github?: string | null;
   /** @nullable */
   phone?: string | null;
   /** @nullable */
@@ -21,6 +26,8 @@ export interface CandidateProfile {
   birthDate?: string | null;
   /** @nullable */
   photoObjectPath?: string | null;
+  /** @nullable */
+  bio?: string | null;
   /** @nullable */
   skills?: string | null;
   /** @nullable */

@@ -5,16 +5,54 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
+function profileShape(p: typeof bidderProfilesTable.$inferSelect) {
+  return {
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    email: p.email,
+    linkedin: p.linkedin,
+    github: p.github,
+    phone: p.phone,
+    address: p.address,
+    birthDate: p.birthDate,
+    photoObjectPath: p.photoObjectPath,
+    bio: p.bio,
+    skills: p.skills,
+    experience: p.experience,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+}
+
+function resumeShape(r: typeof profileResumesTable.$inferSelect) {
+  return {
+    id: r.id,
+    profileId: r.profileId,
+    label: r.label,
+    resumeObjectPath: r.resumeObjectPath,
+    resumeFileName: r.resumeFileName,
+    createdAt: r.createdAt,
+  };
+}
+
+function accessShape(a: typeof profileAccessTable.$inferSelect, bidderName: string | null) {
+  return {
+    id: a.id,
+    profileId: a.profileId,
+    bidderId: a.bidderId,
+    bidderName,
+    createdAt: a.createdAt,
+  };
+}
+
 router.get("/profiles", requireAuth, async (req, res): Promise<void> => {
   const me = req.appUser!;
 
   if (me.role === "BIDDER") {
     const accessRows = await db.select().from(profileAccessTable).where(eq(profileAccessTable.bidderId, me.id));
     const profileIds = accessRows.map((a) => a.profileId);
-    if (profileIds.length === 0) {
-      res.json([]);
-      return;
-    }
+    if (profileIds.length === 0) { res.json([]); return; }
     const profiles = await db.select().from(bidderProfilesTable).where(inArray(bidderProfilesTable.id, profileIds));
     const resumes = await db.select().from(profileResumesTable).where(inArray(profileResumesTable.profileId, profileIds));
     const resumesByProfile: Record<number, typeof resumes> = {};
@@ -23,25 +61,8 @@ router.get("/profiles", requireAuth, async (req, res): Promise<void> => {
       resumesByProfile[r.profileId].push(r);
     }
     res.json(profiles.map((p) => ({
-      id: p.id,
-      candidateName: p.candidateName,
-      bio: p.bio,
-      phone: p.phone,
-      address: p.address,
-      birthDate: p.birthDate,
-      photoObjectPath: p.photoObjectPath,
-      skills: p.skills,
-      experience: p.experience,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      resumes: (resumesByProfile[p.id] || []).map((r) => ({
-        id: r.id,
-        profileId: r.profileId,
-        label: r.label,
-        resumeObjectPath: r.resumeObjectPath,
-        resumeFileName: r.resumeFileName,
-        createdAt: r.createdAt,
-      })),
+      ...profileShape(p),
+      resumes: (resumesByProfile[p.id] || []).map(resumeShape),
       accessGrants: [],
     })));
     return;
@@ -50,23 +71,16 @@ router.get("/profiles", requireAuth, async (req, res): Promise<void> => {
   if (me.role === "BIDDER_MANAGER") {
     const myBidders = await db.select().from(usersTable).where(eq(usersTable.managerId, me.id));
     const myBidderIds = myBidders.map((u) => u.id);
-    if (myBidderIds.length === 0) {
-      res.json([]);
-      return;
-    }
+    if (myBidderIds.length === 0) { res.json([]); return; }
     const accessRows = await db.select().from(profileAccessTable).where(inArray(profileAccessTable.bidderId, myBidderIds));
     const profileIds = [...new Set(accessRows.map((a) => a.profileId))];
-    if (profileIds.length === 0) {
-      res.json([]);
-      return;
-    }
+    if (profileIds.length === 0) { res.json([]); return; }
     const profiles = await db.select().from(bidderProfilesTable).where(inArray(bidderProfilesTable.id, profileIds));
     const resumes = await db.select().from(profileResumesTable).where(inArray(profileResumesTable.profileId, profileIds));
     const allAccessRows = await db.select().from(profileAccessTable).where(inArray(profileAccessTable.profileId, profileIds));
     const allBidderIds = [...new Set(allAccessRows.map((a) => a.bidderId))];
     const bidderUsers = allBidderIds.length > 0 ? await db.select().from(usersTable).where(inArray(usersTable.id, allBidderIds)) : [];
     const bidderMap = Object.fromEntries(bidderUsers.map((u) => [u.id, u]));
-
     const resumesByProfile: Record<number, typeof resumes> = {};
     for (const r of resumes) {
       if (!resumesByProfile[r.profileId]) resumesByProfile[r.profileId] = [];
@@ -77,34 +91,10 @@ router.get("/profiles", requireAuth, async (req, res): Promise<void> => {
       if (!accessByProfile[a.profileId]) accessByProfile[a.profileId] = [];
       accessByProfile[a.profileId].push(a);
     }
-
     res.json(profiles.map((p) => ({
-      id: p.id,
-      candidateName: p.candidateName,
-      bio: p.bio,
-      phone: p.phone,
-      address: p.address,
-      birthDate: p.birthDate,
-      photoObjectPath: p.photoObjectPath,
-      skills: p.skills,
-      experience: p.experience,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      resumes: (resumesByProfile[p.id] || []).map((r) => ({
-        id: r.id,
-        profileId: r.profileId,
-        label: r.label,
-        resumeObjectPath: r.resumeObjectPath,
-        resumeFileName: r.resumeFileName,
-        createdAt: r.createdAt,
-      })),
-      accessGrants: (accessByProfile[p.id] || []).map((a) => ({
-        id: a.id,
-        profileId: a.profileId,
-        bidderId: a.bidderId,
-        bidderName: bidderMap[a.bidderId]?.name ?? null,
-        createdAt: a.createdAt,
-      })),
+      ...profileShape(p),
+      resumes: (resumesByProfile[p.id] || []).map(resumeShape),
+      accessGrants: (accessByProfile[p.id] || []).map((a) => accessShape(a, bidderMap[a.bidderId]?.name ?? null)),
     })));
     return;
   }
@@ -116,7 +106,6 @@ router.get("/profiles", requireAuth, async (req, res): Promise<void> => {
   const allBidderIds = [...new Set(allAccessRows.map((a) => a.bidderId))];
   const bidderUsers = allBidderIds.length > 0 ? await db.select().from(usersTable).where(inArray(usersTable.id, allBidderIds)) : [];
   const bidderMap = Object.fromEntries(bidderUsers.map((u) => [u.id, u]));
-
   const resumesByProfile: Record<number, typeof resumes> = {};
   for (const r of resumes) {
     if (!resumesByProfile[r.profileId]) resumesByProfile[r.profileId] = [];
@@ -127,77 +116,55 @@ router.get("/profiles", requireAuth, async (req, res): Promise<void> => {
     if (!accessByProfile[a.profileId]) accessByProfile[a.profileId] = [];
     accessByProfile[a.profileId].push(a);
   }
-
   res.json(profiles.map((p) => ({
-    id: p.id,
-    candidateName: p.candidateName,
-    bio: p.bio,
-    phone: p.phone,
-    address: p.address,
-    birthDate: p.birthDate,
-    photoObjectPath: p.photoObjectPath,
-    skills: p.skills,
-    experience: p.experience,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-    resumes: (resumesByProfile[p.id] || []).map((r) => ({
-      id: r.id,
-      profileId: r.profileId,
-      label: r.label,
-      resumeObjectPath: r.resumeObjectPath,
-      resumeFileName: r.resumeFileName,
-      createdAt: r.createdAt,
-    })),
-    accessGrants: (accessByProfile[p.id] || []).map((a) => ({
-      id: a.id,
-      profileId: a.profileId,
-      bidderId: a.bidderId,
-      bidderName: bidderMap[a.bidderId]?.name ?? null,
-      createdAt: a.createdAt,
-    })),
+    ...profileShape(p),
+    resumes: (resumesByProfile[p.id] || []).map(resumeShape),
+    accessGrants: (accessByProfile[p.id] || []).map((a) => accessShape(a, bidderMap[a.bidderId]?.name ?? null)),
   })));
 });
 
 router.post("/profiles", requireAuth, requireRole("CHIEF_ADMIN"), async (req, res): Promise<void> => {
-  const { candidateName, bio, phone, address, birthDate, photoObjectPath, skills, experience } = req.body as {
-    candidateName: string;
-    bio?: string;
+  const { firstName, lastName, email, linkedin, github, phone, address, birthDate, photoObjectPath, bio, skills, experience } = req.body as {
+    firstName: string;
+    lastName: string;
+    email?: string;
+    linkedin?: string;
+    github?: string;
     phone?: string;
     address?: string;
     birthDate?: string;
     photoObjectPath?: string;
+    bio?: string;
     skills?: string;
     experience?: string;
   };
 
-  if (!candidateName || candidateName.trim() === "") {
-    res.status(400).json({ error: "candidateName is required" });
+  if (!firstName || firstName.trim() === "") {
+    res.status(400).json({ error: "firstName is required" });
+    return;
+  }
+  if (!lastName || lastName.trim() === "") {
+    res.status(400).json({ error: "lastName is required" });
     return;
   }
 
   const [profile] = await db.insert(bidderProfilesTable).values({
-    candidateName: candidateName.trim(),
-    bio: bio ?? null,
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    email: email ?? null,
+    linkedin: linkedin ?? null,
+    github: github ?? null,
     phone: phone ?? null,
     address: address ?? null,
     birthDate: birthDate ?? null,
     photoObjectPath: photoObjectPath ?? null,
+    bio: bio ?? null,
     skills: skills ?? null,
     experience: experience ?? null,
   }).returning();
 
   res.status(201).json({
-    id: profile.id,
-    candidateName: profile.candidateName,
-    bio: profile.bio,
-    phone: profile.phone,
-    address: profile.address,
-    birthDate: profile.birthDate,
-    photoObjectPath: profile.photoObjectPath,
-    skills: profile.skills,
-    experience: profile.experience,
-    createdAt: profile.createdAt,
-    updatedAt: profile.updatedAt,
+    ...profileShape(profile),
     resumes: [],
     accessGrants: [],
   });
@@ -209,19 +176,13 @@ router.get("/profiles/:profileId", requireAuth, async (req, res): Promise<void> 
   const profileId = parseInt(rawId, 10);
 
   const [profile] = await db.select().from(bidderProfilesTable).where(eq(bidderProfilesTable.id, profileId));
-  if (!profile) {
-    res.status(404).json({ error: "Profile not found" });
-    return;
-  }
+  if (!profile) { res.status(404).json({ error: "Profile not found" }); return; }
 
   if (me.role === "BIDDER") {
     const [access] = await db.select().from(profileAccessTable).where(
       and(eq(profileAccessTable.profileId, profileId), eq(profileAccessTable.bidderId, me.id))
     );
-    if (!access) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
+    if (!access) { res.status(403).json({ error: "Forbidden" }); return; }
   } else if (me.role === "BIDDER_MANAGER") {
     const myBidders = await db.select().from(usersTable).where(eq(usersTable.managerId, me.id));
     const myBidderIds = myBidders.map((u) => u.id);
@@ -230,10 +191,7 @@ router.get("/profiles/:profileId", requireAuth, async (req, res): Promise<void> 
           and(eq(profileAccessTable.profileId, profileId), inArray(profileAccessTable.bidderId, myBidderIds))
         )
       : [];
-    if (accessRows.length === 0) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
+    if (accessRows.length === 0) { res.status(403).json({ error: "Forbidden" }); return; }
   }
 
   const resumes = await db.select().from(profileResumesTable).where(eq(profileResumesTable.profileId, profileId));
@@ -243,32 +201,9 @@ router.get("/profiles/:profileId", requireAuth, async (req, res): Promise<void> 
   const bidderMap = Object.fromEntries(bidderUsers.map((u) => [u.id, u]));
 
   res.json({
-    id: profile.id,
-    candidateName: profile.candidateName,
-    bio: profile.bio,
-    phone: profile.phone,
-    address: profile.address,
-    birthDate: profile.birthDate,
-    photoObjectPath: profile.photoObjectPath,
-    skills: profile.skills,
-    experience: profile.experience,
-    createdAt: profile.createdAt,
-    updatedAt: profile.updatedAt,
-    resumes: resumes.map((r) => ({
-      id: r.id,
-      profileId: r.profileId,
-      label: r.label,
-      resumeObjectPath: r.resumeObjectPath,
-      resumeFileName: r.resumeFileName,
-      createdAt: r.createdAt,
-    })),
-    accessGrants: accessGrants.map((a) => ({
-      id: a.id,
-      profileId: a.profileId,
-      bidderId: a.bidderId,
-      bidderName: bidderMap[a.bidderId]?.name ?? null,
-      createdAt: a.createdAt,
-    })),
+    ...profileShape(profile),
+    resumes: resumes.map(resumeShape),
+    accessGrants: accessGrants.map((a) => accessShape(a, bidderMap[a.bidderId]?.name ?? null)),
   });
 });
 
@@ -277,32 +212,34 @@ router.put("/profiles/:profileId", requireAuth, requireRole("CHIEF_ADMIN"), asyn
   const profileId = parseInt(rawId, 10);
 
   const [existing] = await db.select().from(bidderProfilesTable).where(eq(bidderProfilesTable.id, profileId));
-  if (!existing) {
-    res.status(404).json({ error: "Profile not found" });
-    return;
-  }
+  if (!existing) { res.status(404).json({ error: "Profile not found" }); return; }
 
-  const { candidateName, bio, phone, address, birthDate, photoObjectPath, skills, experience } = req.body as {
-    candidateName?: string;
-    bio?: string;
+  const { firstName, lastName, email, linkedin, github, phone, address, birthDate, photoObjectPath, bio, skills, experience } = req.body as {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    linkedin?: string;
+    github?: string;
     phone?: string;
     address?: string;
     birthDate?: string;
     photoObjectPath?: string;
+    bio?: string;
     skills?: string;
     experience?: string;
   };
 
-  const updateData: Partial<{
-    candidateName: string; bio: string; phone: string; address: string; birthDate: string;
-    photoObjectPath: string; skills: string; experience: string;
-  }> = {};
-  if (candidateName != null) updateData.candidateName = candidateName;
-  if (bio != null) updateData.bio = bio;
+  const updateData: Partial<typeof bidderProfilesTable.$inferInsert> = {};
+  if (firstName != null) updateData.firstName = firstName;
+  if (lastName != null) updateData.lastName = lastName;
+  if (email != null) updateData.email = email;
+  if (linkedin != null) updateData.linkedin = linkedin;
+  if (github != null) updateData.github = github;
   if (phone != null) updateData.phone = phone;
   if (address != null) updateData.address = address;
   if (birthDate != null) updateData.birthDate = birthDate;
   if (photoObjectPath != null) updateData.photoObjectPath = photoObjectPath;
+  if (bio != null) updateData.bio = bio;
   if (skills != null) updateData.skills = skills;
   if (experience != null) updateData.experience = experience;
 
@@ -315,32 +252,9 @@ router.put("/profiles/:profileId", requireAuth, requireRole("CHIEF_ADMIN"), asyn
   const bidderMap = Object.fromEntries(bidderUsers.map((u) => [u.id, u]));
 
   res.json({
-    id: profile.id,
-    candidateName: profile.candidateName,
-    bio: profile.bio,
-    phone: profile.phone,
-    address: profile.address,
-    birthDate: profile.birthDate,
-    photoObjectPath: profile.photoObjectPath,
-    skills: profile.skills,
-    experience: profile.experience,
-    createdAt: profile.createdAt,
-    updatedAt: profile.updatedAt,
-    resumes: resumes.map((r) => ({
-      id: r.id,
-      profileId: r.profileId,
-      label: r.label,
-      resumeObjectPath: r.resumeObjectPath,
-      resumeFileName: r.resumeFileName,
-      createdAt: r.createdAt,
-    })),
-    accessGrants: accessGrants.map((a) => ({
-      id: a.id,
-      profileId: a.profileId,
-      bidderId: a.bidderId,
-      bidderName: bidderMap[a.bidderId]?.name ?? null,
-      createdAt: a.createdAt,
-    })),
+    ...profileShape(profile),
+    resumes: resumes.map(resumeShape),
+    accessGrants: accessGrants.map((a) => accessShape(a, bidderMap[a.bidderId]?.name ?? null)),
   });
 });
 
@@ -349,10 +263,7 @@ router.delete("/profiles/:profileId", requireAuth, requireRole("CHIEF_ADMIN"), a
   const profileId = parseInt(rawId, 10);
 
   const [existing] = await db.select().from(bidderProfilesTable).where(eq(bidderProfilesTable.id, profileId));
-  if (!existing) {
-    res.status(404).json({ error: "Profile not found" });
-    return;
-  }
+  if (!existing) { res.status(404).json({ error: "Profile not found" }); return; }
 
   await db.delete(bidderProfilesTable).where(eq(bidderProfilesTable.id, profileId));
   res.json({ ok: true });
@@ -363,10 +274,7 @@ router.post("/profiles/:profileId/resumes", requireAuth, requireRole("CHIEF_ADMI
   const profileId = parseInt(rawId, 10);
 
   const [profile] = await db.select().from(bidderProfilesTable).where(eq(bidderProfilesTable.id, profileId));
-  if (!profile) {
-    res.status(404).json({ error: "Profile not found" });
-    return;
-  }
+  if (!profile) { res.status(404).json({ error: "Profile not found" }); return; }
 
   const { label, resumeObjectPath, resumeFileName } = req.body as {
     label?: string;
@@ -374,16 +282,10 @@ router.post("/profiles/:profileId/resumes", requireAuth, requireRole("CHIEF_ADMI
     resumeFileName?: string;
   };
 
-  if (!resumeObjectPath) {
-    res.status(400).json({ error: "resumeObjectPath is required" });
-    return;
-  }
+  if (!resumeObjectPath) { res.status(400).json({ error: "resumeObjectPath is required" }); return; }
 
   const [upload] = await db.select().from(objectUploadsTable).where(eq(objectUploadsTable.objectPath, resumeObjectPath));
-  if (!upload) {
-    res.status(400).json({ error: "Invalid object path — not found in uploads" });
-    return;
-  }
+  if (!upload) { res.status(400).json({ error: "Invalid object path — not found in uploads" }); return; }
 
   const [resume] = await db.insert(profileResumesTable).values({
     profileId,
@@ -392,14 +294,7 @@ router.post("/profiles/:profileId/resumes", requireAuth, requireRole("CHIEF_ADMI
     resumeFileName: resumeFileName ?? null,
   }).returning();
 
-  res.status(201).json({
-    id: resume.id,
-    profileId: resume.profileId,
-    label: resume.label,
-    resumeObjectPath: resume.resumeObjectPath,
-    resumeFileName: resume.resumeFileName,
-    createdAt: resume.createdAt,
-  });
+  res.status(201).json(resumeShape(resume));
 });
 
 router.delete("/profiles/:profileId/resumes/:resumeId", requireAuth, requireRole("CHIEF_ADMIN"), async (req, res): Promise<void> => {
@@ -409,10 +304,7 @@ router.delete("/profiles/:profileId/resumes/:resumeId", requireAuth, requireRole
   const [resume] = await db.select().from(profileResumesTable).where(
     and(eq(profileResumesTable.id, resumeId), eq(profileResumesTable.profileId, profileId))
   );
-  if (!resume) {
-    res.status(404).json({ error: "Resume not found" });
-    return;
-  }
+  if (!resume) { res.status(404).json({ error: "Resume not found" }); return; }
 
   await db.delete(profileResumesTable).where(eq(profileResumesTable.id, resumeId));
   res.json({ ok: true });
@@ -423,22 +315,13 @@ router.post("/profiles/:profileId/access", requireAuth, requireRole("CHIEF_ADMIN
   const profileId = parseInt(req.params.profileId, 10);
   const { bidderId } = req.body as { bidderId: number };
 
-  if (!bidderId) {
-    res.status(400).json({ error: "bidderId is required" });
-    return;
-  }
+  if (!bidderId) { res.status(400).json({ error: "bidderId is required" }); return; }
 
   const [profile] = await db.select().from(bidderProfilesTable).where(eq(bidderProfilesTable.id, profileId));
-  if (!profile) {
-    res.status(404).json({ error: "Profile not found" });
-    return;
-  }
+  if (!profile) { res.status(404).json({ error: "Profile not found" }); return; }
 
   const [bidder] = await db.select().from(usersTable).where(eq(usersTable.id, bidderId));
-  if (!bidder || bidder.role !== "BIDDER") {
-    res.status(400).json({ error: "Target user must be a BIDDER" });
-    return;
-  }
+  if (!bidder || bidder.role !== "BIDDER") { res.status(400).json({ error: "Target user must be a BIDDER" }); return; }
 
   if (me.role === "BIDDER_MANAGER" && bidder.managerId !== me.id) {
     res.status(403).json({ error: "Forbidden: bidder is not assigned to you" });
@@ -449,24 +332,12 @@ router.post("/profiles/:profileId/access", requireAuth, requireRole("CHIEF_ADMIN
     and(eq(profileAccessTable.profileId, profileId), eq(profileAccessTable.bidderId, bidderId))
   );
   if (existing) {
-    res.json({
-      id: existing.id,
-      profileId: existing.profileId,
-      bidderId: existing.bidderId,
-      bidderName: bidder.name,
-      createdAt: existing.createdAt,
-    });
+    res.json(accessShape(existing, bidder.name));
     return;
   }
 
   const [access] = await db.insert(profileAccessTable).values({ profileId, bidderId }).returning();
-  res.status(201).json({
-    id: access.id,
-    profileId: access.profileId,
-    bidderId: access.bidderId,
-    bidderName: bidder.name,
-    createdAt: access.createdAt,
-  });
+  res.status(201).json(accessShape(access, bidder.name));
 });
 
 router.delete("/profiles/:profileId/access/:bidderId", requireAuth, requireRole("CHIEF_ADMIN", "BIDDER_MANAGER"), async (req, res): Promise<void> => {
@@ -483,10 +354,7 @@ router.delete("/profiles/:profileId/access/:bidderId", requireAuth, requireRole(
   const [access] = await db.select().from(profileAccessTable).where(
     and(eq(profileAccessTable.profileId, profileId), eq(profileAccessTable.bidderId, bidderId))
   );
-  if (!access) {
-    res.status(404).json({ error: "Access grant not found" });
-    return;
-  }
+  if (!access) { res.status(404).json({ error: "Access grant not found" }); return; }
 
   await db.delete(profileAccessTable).where(eq(profileAccessTable.id, access.id));
   res.json({ ok: true });

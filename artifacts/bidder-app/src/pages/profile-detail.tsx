@@ -66,8 +66,25 @@ import {
   Upload,
   UserPlus,
   UserMinus,
+  Mail,
+  Linkedin,
+  Github,
 } from "lucide-react";
 import { useLocation } from "wouter";
+
+const emptyEditForm = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  linkedin: "",
+  github: "",
+  phone: "",
+  address: "",
+  birthDate: "",
+  bio: "",
+  skills: "",
+  experience: "",
+};
 
 export default function ProfileDetail() {
   const params = useParams();
@@ -93,15 +110,7 @@ export default function ProfileDetail() {
   const isManager = currentUser?.role === "BIDDER_MANAGER";
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    candidateName: "",
-    bio: "",
-    skills: "",
-    experience: "",
-    phone: "",
-    address: "",
-    birthDate: "",
-  });
+  const [editForm, setEditForm] = useState(emptyEditForm);
 
   const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
   const [resumeLabel, setResumeLabel] = useState("");
@@ -113,13 +122,17 @@ export default function ProfileDetail() {
   function openEditDialog() {
     if (!profile) return;
     setEditForm({
-      candidateName: profile.candidateName,
-      bio: profile.bio || "",
-      skills: profile.skills || "",
-      experience: profile.experience || "",
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: profile.email || "",
+      linkedin: profile.linkedin || "",
+      github: profile.github || "",
       phone: profile.phone || "",
       address: profile.address || "",
       birthDate: profile.birthDate ? new Date(profile.birthDate).toISOString().split("T")[0] : "",
+      bio: profile.bio || "",
+      skills: profile.skills || "",
+      experience: profile.experience || "",
     });
     setEditDialogOpen(true);
   }
@@ -129,13 +142,17 @@ export default function ProfileDetail() {
       {
         profileId,
         data: {
-          candidateName: editForm.candidateName.trim() || undefined,
-          bio: editForm.bio || undefined,
-          skills: editForm.skills || undefined,
-          experience: editForm.experience || undefined,
+          firstName: editForm.firstName.trim() || undefined,
+          lastName: editForm.lastName.trim() || undefined,
+          email: editForm.email || undefined,
+          linkedin: editForm.linkedin || undefined,
+          github: editForm.github || undefined,
           phone: editForm.phone || undefined,
           address: editForm.address || undefined,
           birthDate: editForm.birthDate || undefined,
+          bio: editForm.bio || undefined,
+          skills: editForm.skills || undefined,
+          experience: editForm.experience || undefined,
         },
       },
       {
@@ -279,8 +296,8 @@ export default function ProfileDetail() {
     );
   }
 
+  const fullName = `${profile.firstName} ${profile.lastName}`;
   const grantedBidderIds = new Set(profile.accessGrants.map((a) => a.bidderId));
-
   const eligibleBidders = (allUsers || []).filter((u) => {
     if (grantedBidderIds.has(u.id)) return false;
     if (isManager && u.managerId !== currentUser?.id) return false;
@@ -340,33 +357,63 @@ export default function ProfileDetail() {
                   />
                 )}
                 <AvatarFallback className="bg-primary/10 text-primary text-4xl">
-                  {profile.candidateName?.charAt(0).toUpperCase() || (
-                    <UserIcon className="h-12 w-12" />
-                  )}
+                  {profile.firstName.charAt(0).toUpperCase() || <UserIcon className="h-12 w-12" />}
                 </AvatarFallback>
               </Avatar>
-              <h2 className="text-2xl font-bold">{profile.candidateName}</h2>
+              <h2 className="text-2xl font-bold">{fullName}</h2>
               <Badge variant="outline" className="mt-2 mb-4">
                 Candidate
               </Badge>
 
-              <div className="w-full space-y-3 mt-4 text-sm">
+              <div className="w-full space-y-3 mt-2 text-sm text-left">
+                {profile.email && (
+                  <div className="flex items-center text-muted-foreground gap-2">
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    <a href={`mailto:${profile.email}`} className="hover:underline truncate">{profile.email}</a>
+                  </div>
+                )}
                 {profile.phone && (
-                  <div className="flex items-center text-muted-foreground">
-                    <Phone className="h-4 w-4 mr-3 flex-shrink-0" />
+                  <div className="flex items-center text-muted-foreground gap-2">
+                    <Phone className="h-4 w-4 flex-shrink-0" />
                     <span>{profile.phone}</span>
                   </div>
                 )}
                 {profile.address && (
-                  <div className="flex items-center text-muted-foreground">
-                    <MapPin className="h-4 w-4 mr-3 flex-shrink-0" />
+                  <div className="flex items-center text-muted-foreground gap-2">
+                    <MapPin className="h-4 w-4 flex-shrink-0" />
                     <span>{profile.address}</span>
                   </div>
                 )}
                 {profile.birthDate && (
-                  <div className="flex items-center text-muted-foreground">
-                    <Calendar className="h-4 w-4 mr-3 flex-shrink-0" />
+                  <div className="flex items-center text-muted-foreground gap-2">
+                    <Calendar className="h-4 w-4 flex-shrink-0" />
                     <span>{new Date(profile.birthDate).toLocaleDateString()}</span>
+                  </div>
+                )}
+                {profile.linkedin && (
+                  <div className="flex items-center text-muted-foreground gap-2">
+                    <Linkedin className="h-4 w-4 flex-shrink-0" />
+                    <a
+                      href={profile.linkedin.startsWith("http") ? profile.linkedin : `https://${profile.linkedin}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:underline truncate"
+                    >
+                      LinkedIn
+                    </a>
+                  </div>
+                )}
+                {profile.github && (
+                  <div className="flex items-center text-muted-foreground gap-2">
+                    <Github className="h-4 w-4 flex-shrink-0" />
+                    <a
+                      href={profile.github.startsWith("http") ? profile.github : `https://${profile.github}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:underline truncate"
+                    >
+                      GitHub
+                    </a>
                   </div>
                 )}
               </div>
@@ -577,28 +624,56 @@ export default function ProfileDetail() {
         </div>
       </div>
 
+      {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Candidate Profile</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
-            <div className="space-y-1">
-              <Label>Candidate Name *</Label>
-              <Input
-                value={editForm.candidateName}
-                onChange={(e) => setEditForm((f) => ({ ...f, candidateName: e.target.value }))}
-                data-testid="input-edit-candidate-name"
-              />
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>First Name *</Label>
+                <Input
+                  value={editForm.firstName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))}
+                  data-testid="input-edit-first-name"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Last Name *</Label>
+                <Input
+                  value={editForm.lastName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))}
+                  data-testid="input-edit-last-name"
+                />
+              </div>
             </div>
             <div className="space-y-1">
-              <Label>Skills (comma-separated)</Label>
+              <Label>Email</Label>
               <Input
-                value={editForm.skills}
-                onChange={(e) => setEditForm((f) => ({ ...f, skills: e.target.value }))}
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>LinkedIn</Label>
+                <Input
+                  value={editForm.linkedin}
+                  onChange={(e) => setEditForm((f) => ({ ...f, linkedin: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>GitHub</Label>
+                <Input
+                  value={editForm.github}
+                  onChange={(e) => setEditForm((f) => ({ ...f, github: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Phone</Label>
                 <Input
@@ -607,7 +682,7 @@ export default function ProfileDetail() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Birth Date</Label>
+                <Label>Birthday</Label>
                 <Input
                   type="date"
                   value={editForm.birthDate}
@@ -620,6 +695,13 @@ export default function ProfileDetail() {
               <Input
                 value={editForm.address}
                 onChange={(e) => setEditForm((f) => ({ ...f, address: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Skills (comma-separated)</Label>
+              <Input
+                value={editForm.skills}
+                onChange={(e) => setEditForm((f) => ({ ...f, skills: e.target.value }))}
               />
             </div>
             <div className="space-y-1">
@@ -643,7 +725,11 @@ export default function ProfileDetail() {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleEditSubmit} disabled={updateProfile.isPending}>
+            <Button
+              onClick={handleEditSubmit}
+              disabled={updateProfile.isPending}
+              data-testid="btn-edit-profile-submit"
+            >
               {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
@@ -651,56 +737,64 @@ export default function ProfileDetail() {
         </DialogContent>
       </Dialog>
 
+      {/* Upload Resume Dialog */}
       <Dialog open={resumeDialogOpen} onOpenChange={setResumeDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Upload Resume</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1">
-              <Label>Label / Title</Label>
+              <Label>Label (optional)</Label>
               <Input
                 value={resumeLabel}
                 onChange={(e) => setResumeLabel(e.target.value)}
-                placeholder="e.g. Frontend Specialist"
+                placeholder="e.g. Software Engineer - 2024"
                 data-testid="input-resume-label"
               />
             </div>
             <div className="space-y-1">
-              <Label>Resume File (PDF, DOC, DOCX)</Label>
-              <Input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={(e) => e.target.files?.[0] && uploadResumeFile(e.target.files[0])}
-                disabled={isResumeUploading}
-                data-testid="input-resume-file"
-              />
-              {isResumeUploading && (
-                <p className="text-xs text-muted-foreground animate-pulse">Uploading...</p>
-              )}
-              {pendingResumeObjectPath && !isResumeUploading && (
-                <p className="text-xs text-green-600">
-                  File ready: {pendingResumeFileName}
-                </p>
+              <Label>File</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full relative"
+                  disabled={isResumeUploading}
+                  data-testid="btn-upload-resume-file"
+                  asChild
+                >
+                  <label className="cursor-pointer">
+                    {isResumeUploading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
+                    {pendingResumeFileName || "Choose file..."}
+                    <input
+                      type="file"
+                      className="sr-only"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadResumeFile(file);
+                      }}
+                    />
+                  </label>
+                </Button>
+              </div>
+              {pendingResumeFileName && (
+                <p className="text-xs text-green-600">✓ {pendingResumeFileName}</p>
               )}
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setResumeDialogOpen(false);
-                setResumeLabel("");
-                setPendingResumeObjectPath("");
-                setPendingResumeFileName("");
-              }}
-            >
+            <Button variant="outline" onClick={() => setResumeDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleAddResume}
-              disabled={!pendingResumeObjectPath || addResume.isPending || isResumeUploading}
-              data-testid="btn-save-resume"
+              disabled={!pendingResumeObjectPath || addResume.isPending}
+              data-testid="btn-submit-resume"
             >
               {addResume.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Resume

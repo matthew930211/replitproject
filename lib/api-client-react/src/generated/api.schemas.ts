@@ -163,9 +163,14 @@ export interface ProfileAccessGrant {
 
 export interface CandidateProfile {
   id: number;
-  candidateName: string;
+  firstName: string;
+  lastName: string;
   /** @nullable */
-  bio?: string | null;
+  email?: string | null;
+  /** @nullable */
+  linkedin?: string | null;
+  /** @nullable */
+  github?: string | null;
   /** @nullable */
   phone?: string | null;
   /** @nullable */
@@ -174,6 +179,8 @@ export interface CandidateProfile {
   birthDate?: string | null;
   /** @nullable */
   photoObjectPath?: string | null;
+  /** @nullable */
+  bio?: string | null;
   /** @nullable */
   skills?: string | null;
   /** @nullable */
@@ -185,23 +192,31 @@ export interface CandidateProfile {
 }
 
 export interface CreateProfileBody {
-  candidateName: string;
-  bio?: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  linkedin?: string;
+  github?: string;
   phone?: string;
   address?: string;
   birthDate?: string;
   photoObjectPath?: string;
+  bio?: string;
   skills?: string;
   experience?: string;
 }
 
 export interface UpdateProfileBody {
-  candidateName?: string;
-  bio?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  linkedin?: string;
+  github?: string;
   phone?: string;
   address?: string;
   birthDate?: string;
   photoObjectPath?: string;
+  bio?: string;
   skills?: string;
   experience?: string;
 }

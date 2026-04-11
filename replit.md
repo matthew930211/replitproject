@@ -37,7 +37,7 @@ Full-stack Bidder Management Platform with role-based access control, daily work
 - `feedback`: id, reportId, authorId, content, createdAt
 - `messages`: id, senderId, content, createdAt
 - `presence`: id, userId, lastSeenAt
-- `bidder_profiles`: id, candidateName (NOT NULL), bio, phone, address, birthDate, skills, experience, photoObjectPath, createdAt, updatedAt
+- `bidder_profiles`: id, firstName (NOT NULL), lastName (NOT NULL), email, linkedin, github, phone, address, birthDate, bio, skills, experience, photoObjectPath, createdAt, updatedAt
 - `profile_resumes`: id, profileId (FK), label, resumeObjectPath, resumeFileName, createdAt
 - `profile_access`: id, profileId (FK), bidderId (FK), createdAt (unique on profileId+bidderId)
 

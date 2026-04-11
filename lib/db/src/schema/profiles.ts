@@ -5,12 +5,16 @@ import { usersTable } from "./users";
 
 export const bidderProfilesTable = pgTable("bidder_profiles", {
   id: serial("id").primaryKey(),
-  candidateName: text("candidate_name").notNull(),
-  bio: text("bio"),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email"),
+  linkedin: text("linkedin"),
+  github: text("github"),
   phone: text("phone"),
   address: text("address"),
   birthDate: text("birth_date"),
   photoObjectPath: text("photo_object_path"),
+  bio: text("bio"),
   skills: text("skills"),
   experience: text("experience"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

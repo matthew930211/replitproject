@@ -240,12 +240,16 @@ export const UpdatePresenceResponse = zod.object({
  */
 export const ListProfilesResponseItem = zod.object({
   id: zod.number(),
-  candidateName: zod.string(),
-  bio: zod.string().nullish(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().nullish(),
+  linkedin: zod.string().nullish(),
+  github: zod.string().nullish(),
   phone: zod.string().nullish(),
   address: zod.string().nullish(),
   birthDate: zod.string().nullish(),
   photoObjectPath: zod.string().nullish(),
+  bio: zod.string().nullish(),
   skills: zod.string().nullish(),
   experience: zod.string().nullish(),
   createdAt: zod.string(),
@@ -276,12 +280,16 @@ export const ListProfilesResponse = zod.array(ListProfilesResponseItem);
  * @summary Create a candidate profile (CHIEF_ADMIN only)
  */
 export const CreateProfileBody = zod.object({
-  candidateName: zod.string(),
-  bio: zod.string().optional(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().optional(),
+  linkedin: zod.string().optional(),
+  github: zod.string().optional(),
   phone: zod.string().optional(),
   address: zod.string().optional(),
   birthDate: zod.string().optional(),
   photoObjectPath: zod.string().optional(),
+  bio: zod.string().optional(),
   skills: zod.string().optional(),
   experience: zod.string().optional(),
 });
@@ -295,12 +303,16 @@ export const GetProfileParams = zod.object({
 
 export const GetProfileResponse = zod.object({
   id: zod.number(),
-  candidateName: zod.string(),
-  bio: zod.string().nullish(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().nullish(),
+  linkedin: zod.string().nullish(),
+  github: zod.string().nullish(),
   phone: zod.string().nullish(),
   address: zod.string().nullish(),
   birthDate: zod.string().nullish(),
   photoObjectPath: zod.string().nullish(),
+  bio: zod.string().nullish(),
   skills: zod.string().nullish(),
   experience: zod.string().nullish(),
   createdAt: zod.string(),
@@ -334,24 +346,32 @@ export const UpdateProfileParams = zod.object({
 });
 
 export const UpdateProfileBody = zod.object({
-  candidateName: zod.string().optional(),
-  bio: zod.string().optional(),
+  firstName: zod.string().optional(),
+  lastName: zod.string().optional(),
+  email: zod.string().optional(),
+  linkedin: zod.string().optional(),
+  github: zod.string().optional(),
   phone: zod.string().optional(),
   address: zod.string().optional(),
   birthDate: zod.string().optional(),
   photoObjectPath: zod.string().optional(),
+  bio: zod.string().optional(),
   skills: zod.string().optional(),
   experience: zod.string().optional(),
 });
 
 export const UpdateProfileResponse = zod.object({
   id: zod.number(),
-  candidateName: zod.string(),
-  bio: zod.string().nullish(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  email: zod.string().nullish(),
+  linkedin: zod.string().nullish(),
+  github: zod.string().nullish(),
   phone: zod.string().nullish(),
   address: zod.string().nullish(),
   birthDate: zod.string().nullish(),
   photoObjectPath: zod.string().nullish(),
+  bio: zod.string().nullish(),
   skills: zod.string().nullish(),
   experience: zod.string().nullish(),
   createdAt: zod.string(),
