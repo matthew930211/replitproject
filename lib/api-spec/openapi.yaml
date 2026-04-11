@@ -3,20 +3,35 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Bidder Management Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User management
+  - name: reports
+    description: Daily work reports
+  - name: feedback
+    description: Report feedback
+  - name: messages
+    description: Chat messages
+  - name: presence
+    description: Online presence
+  - name: profiles
+    description: Bidder profiles
+  - name: storage
+    description: File storage
+  - name: stats
+    description: Statistics and summaries
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +39,440 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # Users
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get a user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # Daily Reports
+  /reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      summary: List reports (filtered by role permissions)
+      parameters:
+        - name: bidderId
+          in: query
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Report"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createReport
+      tags: [reports]
+      summary: Submit a daily work report (bidder only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReportBody"
+      responses:
+        "201":
+          description: Created report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /reports/{id}:
+    get:
+      operationId: getReport
+      tags: [reports]
+      summary: Get a report by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # Feedback on reports
+  /reports/{reportId}/feedback:
+    get:
+      operationId: listFeedback
+      tags: [feedback]
+      summary: List feedback for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of feedback
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Feedback"
+    post:
+      operationId: createFeedback
+      tags: [feedback]
+      summary: Post feedback on a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedbackBody"
+      responses:
+        "201":
+          description: Created feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # Chat messages
+  /messages:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: List recent chat messages
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a chat message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "201":
+          description: Sent message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # Presence
+  /presence:
+    get:
+      operationId: getPresence
+      tags: [presence]
+      summary: Get online users
+      responses:
+        "200":
+          description: List of online users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PresenceUser"
+    post:
+      operationId: updatePresence
+      tags: [presence]
+      summary: Update presence (heartbeat)
+      responses:
+        "200":
+          description: Presence updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresenceUpdateResponse"
+
+  # Bidder profiles
+  /profiles:
+    get:
+      operationId: listProfiles
+      tags: [profiles]
+      summary: List bidder profiles
+      responses:
+        "200":
+          description: List of profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BidderProfile"
+
+  /profiles/{userId}:
+    get:
+      operationId: getProfile
+      tags: [profiles]
+      summary: Get bidder profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BidderProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: upsertProfile
+      tags: [profiles]
+      summary: Create or update bidder profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertProfileBody"
+      responses:
+        "200":
+          description: Profile upserted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BidderProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # Storage
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUploadUrlBody"
+      responses:
+        "200":
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestUploadUrlResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getObject
+      tags: [storage]
+      summary: Serve a stored object
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Object content
+
+  # Stats
+  /stats/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [stats]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /stats/reports-summary:
+    get:
+      operationId: getReportsSummary
+      tags: [stats]
+      summary: Get reports summary (per bidder / per week)
+      responses:
+        "200":
+          description: Reports summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReportSummaryItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +482,345 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [CHIEF_ADMIN, BIDDER_MANAGER, BIDDER]
+        managerId:
+          type: ["integer", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - clerkId
+        - email
+        - name
+        - role
+        - isActive
+        - createdAt
+        - updatedAt
+
+    CreateUserBody:
+      type: object
+      properties:
+        clerkId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [CHIEF_ADMIN, BIDDER_MANAGER, BIDDER]
+        managerId:
+          type: ["integer", "null"]
+      required:
+        - clerkId
+        - email
+        - name
+        - role
+
+    UpdateUserBody:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+          enum: [CHIEF_ADMIN, BIDDER_MANAGER, BIDDER]
+        managerId:
+          type: ["integer", "null"]
+        isActive:
+          type: boolean
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: integer
+        bidderId:
+          type: integer
+        bidderName:
+          type: ["string", "null"]
+        reportDate:
+          type: string
+        projectsCount:
+          type: integer
+        projectsBid:
+          type: string
+        outcomes:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        feedbackCount:
+          type: integer
+      required:
+        - id
+        - bidderId
+        - reportDate
+        - projectsCount
+        - projectsBid
+        - outcomes
+        - createdAt
+        - feedbackCount
+
+    CreateReportBody:
+      type: object
+      properties:
+        reportDate:
+          type: string
+        projectsCount:
+          type: integer
+        projectsBid:
+          type: string
+        outcomes:
+          type: string
+        notes:
+          type: string
+      required:
+        - reportDate
+        - projectsCount
+        - projectsBid
+        - outcomes
+
+    Feedback:
+      type: object
+      properties:
+        id:
+          type: integer
+        reportId:
+          type: integer
+        authorId:
+          type: integer
+        authorName:
+          type: ["string", "null"]
+        authorRole:
+          type: ["string", "null"]
+        content:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - reportId
+        - authorId
+        - content
+        - createdAt
+
+    CreateFeedbackBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        senderId:
+          type: integer
+        senderName:
+          type: ["string", "null"]
+        senderRole:
+          type: ["string", "null"]
+        content:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - senderId
+        - content
+        - createdAt
+
+    SendMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    PresenceUser:
+      type: object
+      properties:
+        userId:
+          type: integer
+        name:
+          type: string
+        role:
+          type: string
+        lastSeenAt:
+          type: string
+      required:
+        - userId
+        - name
+        - role
+        - lastSeenAt
+
+    PresenceUpdateResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
+
+    BidderProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        birthDate:
+          type: ["string", "null"]
+        photoObjectPath:
+          type: ["string", "null"]
+        resumeObjectPath:
+          type: ["string", "null"]
+        resumeFileName:
+          type: ["string", "null"]
+        skills:
+          type: ["string", "null"]
+        experience:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - userId
+        - createdAt
+        - updatedAt
+
+    UpsertProfileBody:
+      type: object
+      properties:
+        bio:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        birthDate:
+          type: string
+        photoObjectPath:
+          type: string
+        resumeObjectPath:
+          type: string
+        resumeFileName:
+          type: string
+        skills:
+          type: string
+        experience:
+          type: string
+
+    RequestUploadUrlBody:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required:
+        - name
+        - size
+        - contentType
+
+    RequestUploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+      required:
+        - uploadURL
+        - objectPath
+
+    DashboardStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalBidders:
+          type: integer
+        totalManagers:
+          type: integer
+        reportsToday:
+          type: integer
+        reportsThisWeek:
+          type: integer
+        onlineNow:
+          type: integer
+        totalReports:
+          type: integer
+        totalMessages:
+          type: integer
+      required:
+        - totalUsers
+        - totalBidders
+        - totalManagers
+        - reportsToday
+        - reportsThisWeek
+        - onlineNow
+        - totalReports
+        - totalMessages
+
+    ReportSummaryItem:
+      type: object
+      properties:
+        bidderId:
+          type: integer
+        bidderName:
+          type: string
+        totalReports:
+          type: integer
+        totalProjects:
+          type: integer
+        lastReportDate:
+          type: ["string", "null"]
+      required:
+        - bidderId
+        - bidderName
+        - totalReports
+        - totalProjects
