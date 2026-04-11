@@ -89,16 +89,10 @@ export function AppLayout({ children }: AppLayoutProps) {
       roles: [UserRole.CHIEF_ADMIN, UserRole.BIDDER_MANAGER, UserRole.BIDDER],
     },
     {
-      title: "Bidder Profiles",
+      title: "Candidate Profiles",
       href: "/profiles",
       icon: UserCircle,
-      roles: [UserRole.CHIEF_ADMIN, UserRole.BIDDER_MANAGER],
-    },
-    {
-      title: "My Profile",
-      href: user ? `/profiles/${user.id}` : "/profiles",
-      icon: UserCircle,
-      roles: [UserRole.BIDDER],
+      roles: [UserRole.CHIEF_ADMIN, UserRole.BIDDER_MANAGER, UserRole.BIDDER],
     },
     {
       title: "User Management",
@@ -133,9 +127,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           {visibleNavItems.map((item) => (
             <Button
               key={item.href}
-              variant={location.startsWith(item.href) && (item.href !== "/reports" || location === "/reports") && (item.href !== "/profiles" || location === "/profiles") ? "secondary" : "ghost"}
+              variant={location.startsWith(item.href) && (item.href !== "/reports" || location === "/reports") ? "secondary" : "ghost"}
               className={`w-full justify-start ${
-                location === item.href || (location.startsWith(item.href) && item.href !== "/reports" && item.href !== "/profiles")
+                location === item.href || (location.startsWith(item.href) && item.href !== "/reports")
                   ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               }`}

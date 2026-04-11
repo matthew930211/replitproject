@@ -13,6 +13,10 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface OkResponse {
+  ok: boolean;
+}
+
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const UserRole = {
@@ -137,12 +141,29 @@ export interface PresenceUpdateResponse {
   ok: boolean;
 }
 
-export interface BidderProfile {
+export interface ProfileResume {
+  id: number;
+  profileId: number;
   /** @nullable */
-  id?: number | null;
-  userId: number;
+  label?: string | null;
+  resumeObjectPath: string;
   /** @nullable */
-  userName?: string | null;
+  resumeFileName?: string | null;
+  createdAt: string;
+}
+
+export interface ProfileAccessGrant {
+  id: number;
+  profileId: number;
+  bidderId: number;
+  /** @nullable */
+  bidderName?: string | null;
+  createdAt: string;
+}
+
+export interface CandidateProfile {
+  id: number;
+  candidateName: string;
   /** @nullable */
   bio?: string | null;
   /** @nullable */
@@ -154,29 +175,45 @@ export interface BidderProfile {
   /** @nullable */
   photoObjectPath?: string | null;
   /** @nullable */
-  resumeObjectPath?: string | null;
-  /** @nullable */
-  resumeFileName?: string | null;
-  /** @nullable */
   skills?: string | null;
   /** @nullable */
   experience?: string | null;
-  /** @nullable */
-  createdAt?: string | null;
-  /** @nullable */
-  updatedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resumes: ProfileResume[];
+  accessGrants: ProfileAccessGrant[];
 }
 
-export interface UpsertProfileBody {
+export interface CreateProfileBody {
+  candidateName: string;
   bio?: string;
   phone?: string;
   address?: string;
   birthDate?: string;
   photoObjectPath?: string;
-  resumeObjectPath?: string;
-  resumeFileName?: string;
   skills?: string;
   experience?: string;
+}
+
+export interface UpdateProfileBody {
+  candidateName?: string;
+  bio?: string;
+  phone?: string;
+  address?: string;
+  birthDate?: string;
+  photoObjectPath?: string;
+  skills?: string;
+  experience?: string;
+}
+
+export interface AddProfileResumeBody {
+  label?: string;
+  resumeObjectPath: string;
+  resumeFileName?: string;
+}
+
+export interface GrantProfileAccessBody {
+  bidderId: number;
 }
 
 export interface RequestUploadUrlBody {
@@ -213,6 +250,10 @@ export interface ReportSummaryItem {
   /** @nullable */
   lastReportDate?: string | null;
 }
+
+export type BidderProfile = CandidateProfile;
+
+export type UpsertProfileBody = UpdateProfileBody;
 
 /**
  * Unauthorized

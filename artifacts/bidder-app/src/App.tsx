@@ -181,7 +181,7 @@ function AppRoutes() {
       <Route path="/chat"><ProtectedRoute component={Chat} /></Route>
       <Route path="/users"><ProtectedRoute component={Users} /></Route>
       <Route path="/profiles"><ProtectedRoute component={Profiles} /></Route>
-      <Route path="/profiles/:userId"><ProtectedRoute component={ProfileDetail} /></Route>
+      <Route path="/profiles/:profileId"><ProtectedRoute component={ProfileDetail} /></Route>
       <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
 
       <Route component={NotFound} />

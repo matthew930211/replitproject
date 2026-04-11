@@ -236,84 +236,204 @@ export const UpdatePresenceResponse = zod.object({
 });
 
 /**
- * @summary List bidder profiles
+ * @summary List candidate profiles (scoped by role)
  */
 export const ListProfilesResponseItem = zod.object({
-  id: zod.number().nullish(),
-  userId: zod.number(),
-  userName: zod.string().nullish(),
+  id: zod.number(),
+  candidateName: zod.string(),
   bio: zod.string().nullish(),
   phone: zod.string().nullish(),
   address: zod.string().nullish(),
   birthDate: zod.string().nullish(),
   photoObjectPath: zod.string().nullish(),
-  resumeObjectPath: zod.string().nullish(),
-  resumeFileName: zod.string().nullish(),
   skills: zod.string().nullish(),
   experience: zod.string().nullish(),
-  createdAt: zod.string().nullish(),
-  updatedAt: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  resumes: zod.array(
+    zod.object({
+      id: zod.number(),
+      profileId: zod.number(),
+      label: zod.string().nullish(),
+      resumeObjectPath: zod.string(),
+      resumeFileName: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+  accessGrants: zod.array(
+    zod.object({
+      id: zod.number(),
+      profileId: zod.number(),
+      bidderId: zod.number(),
+      bidderName: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
 });
 export const ListProfilesResponse = zod.array(ListProfilesResponseItem);
 
 /**
- * @summary Get bidder profile
+ * @summary Create a candidate profile (CHIEF_ADMIN only)
  */
-export const GetProfileParams = zod.object({
-  userId: zod.coerce.number(),
-});
-
-export const GetProfileResponse = zod.object({
-  id: zod.number().nullish(),
-  userId: zod.number(),
-  userName: zod.string().nullish(),
-  bio: zod.string().nullish(),
-  phone: zod.string().nullish(),
-  address: zod.string().nullish(),
-  birthDate: zod.string().nullish(),
-  photoObjectPath: zod.string().nullish(),
-  resumeObjectPath: zod.string().nullish(),
-  resumeFileName: zod.string().nullish(),
-  skills: zod.string().nullish(),
-  experience: zod.string().nullish(),
-  createdAt: zod.string().nullish(),
-  updatedAt: zod.string().nullish(),
-});
-
-/**
- * @summary Create or update bidder profile
- */
-export const UpsertProfileParams = zod.object({
-  userId: zod.coerce.number(),
-});
-
-export const UpsertProfileBody = zod.object({
+export const CreateProfileBody = zod.object({
+  candidateName: zod.string(),
   bio: zod.string().optional(),
   phone: zod.string().optional(),
   address: zod.string().optional(),
   birthDate: zod.string().optional(),
   photoObjectPath: zod.string().optional(),
-  resumeObjectPath: zod.string().optional(),
-  resumeFileName: zod.string().optional(),
   skills: zod.string().optional(),
   experience: zod.string().optional(),
 });
 
-export const UpsertProfileResponse = zod.object({
-  id: zod.number().nullish(),
-  userId: zod.number(),
-  userName: zod.string().nullish(),
+/**
+ * @summary Get a candidate profile with resumes and access grants
+ */
+export const GetProfileParams = zod.object({
+  profileId: zod.coerce.number(),
+});
+
+export const GetProfileResponse = zod.object({
+  id: zod.number(),
+  candidateName: zod.string(),
   bio: zod.string().nullish(),
   phone: zod.string().nullish(),
   address: zod.string().nullish(),
   birthDate: zod.string().nullish(),
   photoObjectPath: zod.string().nullish(),
-  resumeObjectPath: zod.string().nullish(),
-  resumeFileName: zod.string().nullish(),
   skills: zod.string().nullish(),
   experience: zod.string().nullish(),
-  createdAt: zod.string().nullish(),
-  updatedAt: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  resumes: zod.array(
+    zod.object({
+      id: zod.number(),
+      profileId: zod.number(),
+      label: zod.string().nullish(),
+      resumeObjectPath: zod.string(),
+      resumeFileName: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+  accessGrants: zod.array(
+    zod.object({
+      id: zod.number(),
+      profileId: zod.number(),
+      bidderId: zod.number(),
+      bidderName: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update a candidate profile (CHIEF_ADMIN only)
+ */
+export const UpdateProfileParams = zod.object({
+  profileId: zod.coerce.number(),
+});
+
+export const UpdateProfileBody = zod.object({
+  candidateName: zod.string().optional(),
+  bio: zod.string().optional(),
+  phone: zod.string().optional(),
+  address: zod.string().optional(),
+  birthDate: zod.string().optional(),
+  photoObjectPath: zod.string().optional(),
+  skills: zod.string().optional(),
+  experience: zod.string().optional(),
+});
+
+export const UpdateProfileResponse = zod.object({
+  id: zod.number(),
+  candidateName: zod.string(),
+  bio: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  address: zod.string().nullish(),
+  birthDate: zod.string().nullish(),
+  photoObjectPath: zod.string().nullish(),
+  skills: zod.string().nullish(),
+  experience: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  resumes: zod.array(
+    zod.object({
+      id: zod.number(),
+      profileId: zod.number(),
+      label: zod.string().nullish(),
+      resumeObjectPath: zod.string(),
+      resumeFileName: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+  accessGrants: zod.array(
+    zod.object({
+      id: zod.number(),
+      profileId: zod.number(),
+      bidderId: zod.number(),
+      bidderName: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a candidate profile and all its resumes and access grants (CHIEF_ADMIN only)
+ */
+export const DeleteProfileParams = zod.object({
+  profileId: zod.coerce.number(),
+});
+
+export const DeleteProfileResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Upload a resume entry to a profile (CHIEF_ADMIN only)
+ */
+export const AddProfileResumeParams = zod.object({
+  profileId: zod.coerce.number(),
+});
+
+export const AddProfileResumeBody = zod.object({
+  label: zod.string().optional(),
+  resumeObjectPath: zod.string(),
+  resumeFileName: zod.string().optional(),
+});
+
+/**
+ * @summary Delete a resume entry from a profile (CHIEF_ADMIN only)
+ */
+export const DeleteProfileResumeParams = zod.object({
+  profileId: zod.coerce.number(),
+  resumeId: zod.coerce.number(),
+});
+
+export const DeleteProfileResumeResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Grant a bidder access to a profile (admin or manager for their bidders)
+ */
+export const GrantProfileAccessParams = zod.object({
+  profileId: zod.coerce.number(),
+});
+
+export const GrantProfileAccessBody = zod.object({
+  bidderId: zod.number(),
+});
+
+/**
+ * @summary Revoke a bidder's access to a profile (admin or manager for their bidders)
+ */
+export const RevokeProfileAccessParams = zod.object({
+  profileId: zod.coerce.number(),
+  bidderId: zod.coerce.number(),
+});
+
+export const RevokeProfileAccessResponse = zod.object({
+  ok: zod.boolean(),
 });
 
 /**

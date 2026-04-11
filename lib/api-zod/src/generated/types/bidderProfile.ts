@@ -5,33 +5,6 @@
  * Bidder Management Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { CandidateProfile } from "./candidateProfile";
 
-export interface BidderProfile {
-  /** @nullable */
-  id?: number | null;
-  userId: number;
-  /** @nullable */
-  userName?: string | null;
-  /** @nullable */
-  bio?: string | null;
-  /** @nullable */
-  phone?: string | null;
-  /** @nullable */
-  address?: string | null;
-  /** @nullable */
-  birthDate?: string | null;
-  /** @nullable */
-  photoObjectPath?: string | null;
-  /** @nullable */
-  resumeObjectPath?: string | null;
-  /** @nullable */
-  resumeFileName?: string | null;
-  /** @nullable */
-  skills?: string | null;
-  /** @nullable */
-  experience?: string | null;
-  /** @nullable */
-  createdAt?: string | null;
-  /** @nullable */
-  updatedAt?: string | null;
-}
+export type BidderProfile = CandidateProfile;

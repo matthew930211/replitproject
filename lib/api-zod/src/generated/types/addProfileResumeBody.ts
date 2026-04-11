@@ -5,6 +5,9 @@
  * Bidder Management Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { UpdateProfileBody } from "./updateProfileBody";
 
-export type UpsertProfileBody = UpdateProfileBody;
+export interface AddProfileResumeBody {
+  label?: string;
+  resumeObjectPath: string;
+  resumeFileName?: string;
+}

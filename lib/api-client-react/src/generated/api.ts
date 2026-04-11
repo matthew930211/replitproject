@@ -17,28 +17,34 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
-  BidderProfile,
+  AddProfileResumeBody,
+  CandidateProfile,
   CreateFeedbackBody,
+  CreateProfileBody,
   CreateReportBody,
   CreateUserBody,
   DashboardStats,
   Feedback,
+  GrantProfileAccessBody,
   HealthStatus,
   ListMessagesParams,
   ListReportsParams,
   ListUsersParams,
   Message,
   NotFoundResponse,
+  OkResponse,
   PresenceUpdateResponse,
   PresenceUser,
+  ProfileAccessGrant,
+  ProfileResume,
   Report,
   ReportSummaryItem,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   SendMessageBody,
   UnauthorizedResponse,
+  UpdateProfileBody,
   UpdateUserBody,
-  UpsertProfileBody,
   User,
 } from "./api.schemas";
 
@@ -1311,7 +1317,7 @@ export const useUpdatePresence = <
 };
 
 /**
- * @summary List bidder profiles
+ * @summary List candidate profiles (scoped by role)
  */
 export const getListProfilesUrl = () => {
   return `/api/profiles`;
@@ -1319,8 +1325,8 @@ export const getListProfilesUrl = () => {
 
 export const listProfiles = async (
   options?: RequestInit,
-): Promise<BidderProfile[]> => {
-  return customFetch<BidderProfile[]>(getListProfilesUrl(), {
+): Promise<CandidateProfile[]> => {
+  return customFetch<CandidateProfile[]>(getListProfilesUrl(), {
     ...options,
     method: "GET",
   });
@@ -1332,7 +1338,7 @@ export const getListProfilesQueryKey = () => {
 
 export const getListProfilesQueryOptions = <
   TData = Awaited<ReturnType<typeof listProfiles>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<UnauthorizedResponse>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listProfiles>>,
@@ -1359,15 +1365,15 @@ export const getListProfilesQueryOptions = <
 export type ListProfilesQueryResult = NonNullable<
   Awaited<ReturnType<typeof listProfiles>>
 >;
-export type ListProfilesQueryError = ErrorType<unknown>;
+export type ListProfilesQueryError = ErrorType<UnauthorizedResponse>;
 
 /**
- * @summary List bidder profiles
+ * @summary List candidate profiles (scoped by role)
  */
 
 export function useListProfiles<
   TData = Awaited<ReturnType<typeof listProfiles>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<UnauthorizedResponse>,
 >(options?: {
   query?: UseQueryOptions<
     Awaited<ReturnType<typeof listProfiles>>,
@@ -1386,31 +1392,117 @@ export function useListProfiles<
 }
 
 /**
- * @summary Get bidder profile
+ * @summary Create a candidate profile (CHIEF_ADMIN only)
  */
-export const getGetProfileUrl = (userId: number) => {
-  return `/api/profiles/${userId}`;
+export const getCreateProfileUrl = () => {
+  return `/api/profiles`;
+};
+
+export const createProfile = async (
+  createProfileBody: CreateProfileBody,
+  options?: RequestInit,
+): Promise<CandidateProfile> => {
+  return customFetch<CandidateProfile>(getCreateProfileUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProfileBody),
+  });
+};
+
+export const getCreateProfileMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProfile>>,
+    TError,
+    { data: BodyType<CreateProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProfile>>,
+  TError,
+  { data: BodyType<CreateProfileBody> },
+  TContext
+> => {
+  const mutationKey = ["createProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProfile>>,
+    { data: BodyType<CreateProfileBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProfile>>
+>;
+export type CreateProfileMutationBody = BodyType<CreateProfileBody>;
+export type CreateProfileMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Create a candidate profile (CHIEF_ADMIN only)
+ */
+export const useCreateProfile = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProfile>>,
+    TError,
+    { data: BodyType<CreateProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProfile>>,
+  TError,
+  { data: BodyType<CreateProfileBody> },
+  TContext
+> => {
+  return useMutation(getCreateProfileMutationOptions(options));
+};
+
+/**
+ * @summary Get a candidate profile with resumes and access grants
+ */
+export const getGetProfileUrl = (profileId: number) => {
+  return `/api/profiles/${profileId}`;
 };
 
 export const getProfile = async (
-  userId: number,
+  profileId: number,
   options?: RequestInit,
-): Promise<BidderProfile> => {
-  return customFetch<BidderProfile>(getGetProfileUrl(userId), {
+): Promise<CandidateProfile> => {
+  return customFetch<CandidateProfile>(getGetProfileUrl(profileId), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetProfileQueryKey = (userId: number) => {
-  return [`/api/profiles/${userId}`] as const;
+export const getGetProfileQueryKey = (profileId: number) => {
+  return [`/api/profiles/${profileId}`] as const;
 };
 
 export const getGetProfileQueryOptions = <
   TData = Awaited<ReturnType<typeof getProfile>>,
-  TError = ErrorType<NotFoundResponse>,
+  TError = ErrorType<void | NotFoundResponse>,
 >(
-  userId: number,
+  profileId: number,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getProfile>>,
@@ -1422,16 +1514,16 @@ export const getGetProfileQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetProfileQueryKey(userId);
+  const queryKey = queryOptions?.queryKey ?? getGetProfileQueryKey(profileId);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof getProfile>>> = ({
     signal,
-  }) => getProfile(userId, { signal, ...requestOptions });
+  }) => getProfile(profileId, { signal, ...requestOptions });
 
   return {
     queryKey,
     queryFn,
-    enabled: !!userId,
+    enabled: !!profileId,
     ...queryOptions,
   } as UseQueryOptions<
     Awaited<ReturnType<typeof getProfile>>,
@@ -1443,17 +1535,17 @@ export const getGetProfileQueryOptions = <
 export type GetProfileQueryResult = NonNullable<
   Awaited<ReturnType<typeof getProfile>>
 >;
-export type GetProfileQueryError = ErrorType<NotFoundResponse>;
+export type GetProfileQueryError = ErrorType<void | NotFoundResponse>;
 
 /**
- * @summary Get bidder profile
+ * @summary Get a candidate profile with resumes and access grants
  */
 
 export function useGetProfile<
   TData = Awaited<ReturnType<typeof getProfile>>,
-  TError = ErrorType<NotFoundResponse>,
+  TError = ErrorType<void | NotFoundResponse>,
 >(
-  userId: number,
+  profileId: number,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getProfile>>,
@@ -1463,7 +1555,7 @@ export function useGetProfile<
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetProfileQueryOptions(userId, options);
+  const queryOptions = getGetProfileQueryOptions(profileId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1473,43 +1565,43 @@ export function useGetProfile<
 }
 
 /**
- * @summary Create or update bidder profile
+ * @summary Update a candidate profile (CHIEF_ADMIN only)
  */
-export const getUpsertProfileUrl = (userId: number) => {
-  return `/api/profiles/${userId}`;
+export const getUpdateProfileUrl = (profileId: number) => {
+  return `/api/profiles/${profileId}`;
 };
 
-export const upsertProfile = async (
-  userId: number,
-  upsertProfileBody: UpsertProfileBody,
+export const updateProfile = async (
+  profileId: number,
+  updateProfileBody: UpdateProfileBody,
   options?: RequestInit,
-): Promise<BidderProfile> => {
-  return customFetch<BidderProfile>(getUpsertProfileUrl(userId), {
+): Promise<CandidateProfile> => {
+  return customFetch<CandidateProfile>(getUpdateProfileUrl(profileId), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(upsertProfileBody),
+    body: JSON.stringify(updateProfileBody),
   });
 };
 
-export const getUpsertProfileMutationOptions = <
-  TError = ErrorType<UnauthorizedResponse>,
+export const getUpdateProfileMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof upsertProfile>>,
+    Awaited<ReturnType<typeof updateProfile>>,
     TError,
-    { userId: number; data: BodyType<UpsertProfileBody> },
+    { profileId: number; data: BodyType<UpdateProfileBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof upsertProfile>>,
+  Awaited<ReturnType<typeof updateProfile>>,
   TError,
-  { userId: number; data: BodyType<UpsertProfileBody> },
+  { profileId: number; data: BodyType<UpdateProfileBody> },
   TContext
 > => {
-  const mutationKey = ["upsertProfile"];
+  const mutationKey = ["updateProfile"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -1519,44 +1611,496 @@ export const getUpsertProfileMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof upsertProfile>>,
-    { userId: number; data: BodyType<UpsertProfileBody> }
+    Awaited<ReturnType<typeof updateProfile>>,
+    { profileId: number; data: BodyType<UpdateProfileBody> }
   > = (props) => {
-    const { userId, data } = props ?? {};
+    const { profileId, data } = props ?? {};
 
-    return upsertProfile(userId, data, requestOptions);
+    return updateProfile(profileId, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type UpsertProfileMutationResult = NonNullable<
-  Awaited<ReturnType<typeof upsertProfile>>
+export type UpdateProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProfile>>
 >;
-export type UpsertProfileMutationBody = BodyType<UpsertProfileBody>;
-export type UpsertProfileMutationError = ErrorType<UnauthorizedResponse>;
+export type UpdateProfileMutationBody = BodyType<UpdateProfileBody>;
+export type UpdateProfileMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
 
 /**
- * @summary Create or update bidder profile
+ * @summary Update a candidate profile (CHIEF_ADMIN only)
  */
-export const useUpsertProfile = <
-  TError = ErrorType<UnauthorizedResponse>,
+export const useUpdateProfile = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof upsertProfile>>,
+    Awaited<ReturnType<typeof updateProfile>>,
     TError,
-    { userId: number; data: BodyType<UpsertProfileBody> },
+    { profileId: number; data: BodyType<UpdateProfileBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof upsertProfile>>,
+  Awaited<ReturnType<typeof updateProfile>>,
   TError,
-  { userId: number; data: BodyType<UpsertProfileBody> },
+  { profileId: number; data: BodyType<UpdateProfileBody> },
   TContext
 > => {
-  return useMutation(getUpsertProfileMutationOptions(options));
+  return useMutation(getUpdateProfileMutationOptions(options));
+};
+
+/**
+ * @summary Delete a candidate profile and all its resumes and access grants (CHIEF_ADMIN only)
+ */
+export const getDeleteProfileUrl = (profileId: number) => {
+  return `/api/profiles/${profileId}`;
+};
+
+export const deleteProfile = async (
+  profileId: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteProfileUrl(profileId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteProfileMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProfile>>,
+    TError,
+    { profileId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteProfile>>,
+  TError,
+  { profileId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteProfile>>,
+    { profileId: number }
+  > = (props) => {
+    const { profileId } = props ?? {};
+
+    return deleteProfile(profileId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProfile>>
+>;
+
+export type DeleteProfileMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Delete a candidate profile and all its resumes and access grants (CHIEF_ADMIN only)
+ */
+export const useDeleteProfile = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProfile>>,
+    TError,
+    { profileId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteProfile>>,
+  TError,
+  { profileId: number },
+  TContext
+> => {
+  return useMutation(getDeleteProfileMutationOptions(options));
+};
+
+/**
+ * @summary Upload a resume entry to a profile (CHIEF_ADMIN only)
+ */
+export const getAddProfileResumeUrl = (profileId: number) => {
+  return `/api/profiles/${profileId}/resumes`;
+};
+
+export const addProfileResume = async (
+  profileId: number,
+  addProfileResumeBody: AddProfileResumeBody,
+  options?: RequestInit,
+): Promise<ProfileResume> => {
+  return customFetch<ProfileResume>(getAddProfileResumeUrl(profileId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(addProfileResumeBody),
+  });
+};
+
+export const getAddProfileResumeMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addProfileResume>>,
+    TError,
+    { profileId: number; data: BodyType<AddProfileResumeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addProfileResume>>,
+  TError,
+  { profileId: number; data: BodyType<AddProfileResumeBody> },
+  TContext
+> => {
+  const mutationKey = ["addProfileResume"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addProfileResume>>,
+    { profileId: number; data: BodyType<AddProfileResumeBody> }
+  > = (props) => {
+    const { profileId, data } = props ?? {};
+
+    return addProfileResume(profileId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddProfileResumeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addProfileResume>>
+>;
+export type AddProfileResumeMutationBody = BodyType<AddProfileResumeBody>;
+export type AddProfileResumeMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Upload a resume entry to a profile (CHIEF_ADMIN only)
+ */
+export const useAddProfileResume = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addProfileResume>>,
+    TError,
+    { profileId: number; data: BodyType<AddProfileResumeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addProfileResume>>,
+  TError,
+  { profileId: number; data: BodyType<AddProfileResumeBody> },
+  TContext
+> => {
+  return useMutation(getAddProfileResumeMutationOptions(options));
+};
+
+/**
+ * @summary Delete a resume entry from a profile (CHIEF_ADMIN only)
+ */
+export const getDeleteProfileResumeUrl = (
+  profileId: number,
+  resumeId: number,
+) => {
+  return `/api/profiles/${profileId}/resumes/${resumeId}`;
+};
+
+export const deleteProfileResume = async (
+  profileId: number,
+  resumeId: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(
+    getDeleteProfileResumeUrl(profileId, resumeId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteProfileResumeMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProfileResume>>,
+    TError,
+    { profileId: number; resumeId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteProfileResume>>,
+  TError,
+  { profileId: number; resumeId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteProfileResume"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteProfileResume>>,
+    { profileId: number; resumeId: number }
+  > = (props) => {
+    const { profileId, resumeId } = props ?? {};
+
+    return deleteProfileResume(profileId, resumeId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteProfileResumeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProfileResume>>
+>;
+
+export type DeleteProfileResumeMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Delete a resume entry from a profile (CHIEF_ADMIN only)
+ */
+export const useDeleteProfileResume = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProfileResume>>,
+    TError,
+    { profileId: number; resumeId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteProfileResume>>,
+  TError,
+  { profileId: number; resumeId: number },
+  TContext
+> => {
+  return useMutation(getDeleteProfileResumeMutationOptions(options));
+};
+
+/**
+ * @summary Grant a bidder access to a profile (admin or manager for their bidders)
+ */
+export const getGrantProfileAccessUrl = (profileId: number) => {
+  return `/api/profiles/${profileId}/access`;
+};
+
+export const grantProfileAccess = async (
+  profileId: number,
+  grantProfileAccessBody: GrantProfileAccessBody,
+  options?: RequestInit,
+): Promise<ProfileAccessGrant> => {
+  return customFetch<ProfileAccessGrant>(getGrantProfileAccessUrl(profileId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(grantProfileAccessBody),
+  });
+};
+
+export const getGrantProfileAccessMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof grantProfileAccess>>,
+    TError,
+    { profileId: number; data: BodyType<GrantProfileAccessBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof grantProfileAccess>>,
+  TError,
+  { profileId: number; data: BodyType<GrantProfileAccessBody> },
+  TContext
+> => {
+  const mutationKey = ["grantProfileAccess"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof grantProfileAccess>>,
+    { profileId: number; data: BodyType<GrantProfileAccessBody> }
+  > = (props) => {
+    const { profileId, data } = props ?? {};
+
+    return grantProfileAccess(profileId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GrantProfileAccessMutationResult = NonNullable<
+  Awaited<ReturnType<typeof grantProfileAccess>>
+>;
+export type GrantProfileAccessMutationBody = BodyType<GrantProfileAccessBody>;
+export type GrantProfileAccessMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Grant a bidder access to a profile (admin or manager for their bidders)
+ */
+export const useGrantProfileAccess = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof grantProfileAccess>>,
+    TError,
+    { profileId: number; data: BodyType<GrantProfileAccessBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof grantProfileAccess>>,
+  TError,
+  { profileId: number; data: BodyType<GrantProfileAccessBody> },
+  TContext
+> => {
+  return useMutation(getGrantProfileAccessMutationOptions(options));
+};
+
+/**
+ * @summary Revoke a bidder's access to a profile (admin or manager for their bidders)
+ */
+export const getRevokeProfileAccessUrl = (
+  profileId: number,
+  bidderId: number,
+) => {
+  return `/api/profiles/${profileId}/access/${bidderId}`;
+};
+
+export const revokeProfileAccess = async (
+  profileId: number,
+  bidderId: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(
+    getRevokeProfileAccessUrl(profileId, bidderId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getRevokeProfileAccessMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeProfileAccess>>,
+    TError,
+    { profileId: number; bidderId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof revokeProfileAccess>>,
+  TError,
+  { profileId: number; bidderId: number },
+  TContext
+> => {
+  const mutationKey = ["revokeProfileAccess"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof revokeProfileAccess>>,
+    { profileId: number; bidderId: number }
+  > = (props) => {
+    const { profileId, bidderId } = props ?? {};
+
+    return revokeProfileAccess(profileId, bidderId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RevokeProfileAccessMutationResult = NonNullable<
+  Awaited<ReturnType<typeof revokeProfileAccess>>
+>;
+
+export type RevokeProfileAccessMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Revoke a bidder's access to a profile (admin or manager for their bidders)
+ */
+export const useRevokeProfileAccess = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeProfileAccess>>,
+    TError,
+    { profileId: number; bidderId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof revokeProfileAccess>>,
+  TError,
+  { profileId: number; bidderId: number },
+  TContext
+> => {
+  return useMutation(getRevokeProfileAccessMutationOptions(options));
 };
 
 /**

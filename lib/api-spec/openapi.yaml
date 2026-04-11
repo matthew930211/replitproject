@@ -21,7 +21,7 @@ tags:
   - name: presence
     description: Online presence
   - name: profiles
-    description: Bidder profiles
+    description: Candidate profiles
   - name: storage
     description: File storage
   - name: stats
@@ -326,12 +326,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/PresenceUpdateResponse"
 
-  # Bidder profiles
+  # Candidate profiles
   /profiles:
     get:
       operationId: listProfiles
       tags: [profiles]
-      summary: List bidder profiles
+      summary: List candidate profiles (scoped by role)
       responses:
         "200":
           description: List of profiles
@@ -340,15 +340,36 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/BidderProfile"
+                  $ref: "#/components/schemas/CandidateProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createProfile
+      tags: [profiles]
+      summary: Create a candidate profile (CHIEF_ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProfileBody"
+      responses:
+        "201":
+          description: Created profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
-  /profiles/{userId}:
+  /profiles/{profileId}:
     get:
       operationId: getProfile
       tags: [profiles]
-      summary: Get bidder profile
+      summary: Get a candidate profile with resumes and access grants
       parameters:
-        - name: userId
+        - name: profileId
           in: path
           required: true
           schema:
@@ -359,15 +380,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BidderProfile"
+                $ref: "#/components/schemas/CandidateProfile"
+        "403":
+          description: Forbidden
         "404":
           $ref: "#/components/responses/NotFound"
     put:
-      operationId: upsertProfile
+      operationId: updateProfile
       tags: [profiles]
-      summary: Create or update bidder profile
+      summary: Update a candidate profile (CHIEF_ADMIN only)
       parameters:
-        - name: userId
+        - name: profileId
           in: path
           required: true
           schema:
@@ -377,16 +400,153 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpsertProfileBody"
+              $ref: "#/components/schemas/UpdateProfileBody"
       responses:
         "200":
-          description: Profile upserted
+          description: Updated profile
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BidderProfile"
+                $ref: "#/components/schemas/CandidateProfile"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteProfile
+      tags: [profiles]
+      summary: Delete a candidate profile and all its resumes and access grants (CHIEF_ADMIN only)
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /profiles/{profileId}/resumes:
+    post:
+      operationId: addProfileResume
+      tags: [profiles]
+      summary: Upload a resume entry to a profile (CHIEF_ADMIN only)
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddProfileResumeBody"
+      responses:
+        "201":
+          description: Resume added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResume"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /profiles/{profileId}/resumes/{resumeId}:
+    delete:
+      operationId: deleteProfileResume
+      tags: [profiles]
+      summary: Delete a resume entry from a profile (CHIEF_ADMIN only)
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: resumeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /profiles/{profileId}/access:
+    post:
+      operationId: grantProfileAccess
+      tags: [profiles]
+      summary: Grant a bidder access to a profile (admin or manager for their bidders)
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GrantProfileAccessBody"
+      responses:
+        "201":
+          description: Access granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileAccessGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /profiles/{profileId}/access/{bidderId}:
+    delete:
+      operationId: revokeProfileAccess
+      tags: [profiles]
+      summary: Revoke a bidder's access to a profile (admin or manager for their bidders)
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: bidderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Access revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # Storage
   /storage/uploads/request-url:
@@ -537,6 +697,14 @@ components:
           type: string
       required:
         - error
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
 
     User:
       type: object
@@ -740,15 +908,53 @@ components:
       required:
         - ok
 
-    BidderProfile:
+    ProfileResume:
       type: object
       properties:
         id:
-          type: ["integer", "null"]
-        userId:
           type: integer
-        userName:
+        profileId:
+          type: integer
+        label:
           type: ["string", "null"]
+        resumeObjectPath:
+          type: string
+        resumeFileName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - profileId
+        - resumeObjectPath
+        - createdAt
+
+    ProfileAccessGrant:
+      type: object
+      properties:
+        id:
+          type: integer
+        profileId:
+          type: integer
+        bidderId:
+          type: integer
+        bidderName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - profileId
+        - bidderId
+        - createdAt
+
+    CandidateProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        candidateName:
+          type: string
         bio:
           type: ["string", "null"]
         phone:
@@ -758,25 +964,36 @@ components:
         birthDate:
           type: ["string", "null"]
         photoObjectPath:
-          type: ["string", "null"]
-        resumeObjectPath:
-          type: ["string", "null"]
-        resumeFileName:
           type: ["string", "null"]
         skills:
           type: ["string", "null"]
         experience:
           type: ["string", "null"]
         createdAt:
-          type: ["string", "null"]
+          type: string
         updatedAt:
-          type: ["string", "null"]
+          type: string
+        resumes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileResume"
+        accessGrants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileAccessGrant"
       required:
-        - userId
+        - id
+        - candidateName
+        - createdAt
+        - updatedAt
+        - resumes
+        - accessGrants
 
-    UpsertProfileBody:
+    CreateProfileBody:
       type: object
       properties:
+        candidateName:
+          type: string
         bio:
           type: string
         phone:
@@ -787,14 +1004,52 @@ components:
           type: string
         photoObjectPath:
           type: string
-        resumeObjectPath:
+        skills:
           type: string
-        resumeFileName:
+        experience:
+          type: string
+      required:
+        - candidateName
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        candidateName:
+          type: string
+        bio:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        birthDate:
+          type: string
+        photoObjectPath:
           type: string
         skills:
           type: string
         experience:
           type: string
+
+    AddProfileResumeBody:
+      type: object
+      properties:
+        label:
+          type: string
+        resumeObjectPath:
+          type: string
+        resumeFileName:
+          type: string
+      required:
+        - resumeObjectPath
+
+    GrantProfileAccessBody:
+      type: object
+      properties:
+        bidderId:
+          type: integer
+      required:
+        - bidderId
 
     RequestUploadUrlBody:
       type: object
@@ -868,3 +1123,10 @@ components:
         - bidderName
         - totalReports
         - totalProjects
+
+    # Legacy alias kept for backwards compatibility — use CandidateProfile instead
+    BidderProfile:
+      $ref: "#/components/schemas/CandidateProfile"
+
+    UpsertProfileBody:
+      $ref: "#/components/schemas/UpdateProfileBody"

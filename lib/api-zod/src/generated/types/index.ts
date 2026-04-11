@@ -6,28 +6,36 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./addProfileResumeBody";
 export * from "./bidderProfile";
+export * from "./candidateProfile";
 export * from "./createFeedbackBody";
+export * from "./createProfileBody";
 export * from "./createReportBody";
 export * from "./createUserBody";
 export * from "./createUserBodyRole";
 export * from "./dashboardStats";
 export * from "./errorResponse";
 export * from "./feedback";
+export * from "./grantProfileAccessBody";
 export * from "./healthStatus";
 export * from "./listMessagesParams";
 export * from "./listReportsParams";
 export * from "./listUsersParams";
 export * from "./message";
 export * from "./notFoundResponse";
+export * from "./okResponse";
 export * from "./presenceUpdateResponse";
 export * from "./presenceUser";
+export * from "./profileAccessGrant";
+export * from "./profileResume";
 export * from "./report";
 export * from "./reportSummaryItem";
 export * from "./requestUploadUrlBody";
 export * from "./requestUploadUrlResponse";
 export * from "./sendMessageBody";
 export * from "./unauthorizedResponse";
+export * from "./updateProfileBody";
 export * from "./updateUserBody";
 export * from "./updateUserBodyRole";
 export * from "./upsertProfileBody";
