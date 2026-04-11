@@ -144,37 +144,37 @@ router.post("/users/sync", async (req, res): Promise<void> => {
     return;
   }
 
-  let verifiedEmail: string | undefined;
-  let verifiedName: string | undefined;
+  let verifiedEmail: string;
+  let verifiedName: string;
   try {
     const clerkUser = await clerkClient.users.getUser(clerkId);
     const primaryEmail = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId);
-    verifiedEmail = primaryEmail?.emailAddress;
-    verifiedName = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || undefined;
-  } catch {
-    // If Clerk lookup fails, proceed with body values as fallback (best-effort)
-    const body = req.body as { email?: string; name?: string };
-    verifiedEmail = body.email;
-    verifiedName = body.name;
-  }
-
-  if (verifiedEmail) {
-    const byEmail = await db.select().from(usersTable).where(eq(usersTable.email, verifiedEmail));
-    const pending = byEmail.find(u => u.clerkId.startsWith("pending_"));
-    if (pending) {
-      const [updated] = await db.update(usersTable)
-        .set({ clerkId, name: verifiedName ?? pending.name })
-        .where(eq(usersTable.id, pending.id))
-        .returning();
-      res.json({ id: updated.id, clerkId: updated.clerkId, email: updated.email, name: updated.name, role: updated.role, managerId: updated.managerId, isActive: updated.isActive, createdAt: updated.createdAt, updatedAt: updated.updatedAt });
+    if (!primaryEmail?.emailAddress) {
+      res.status(400).json({ error: "No verified email on Clerk account" });
       return;
     }
+    verifiedEmail = primaryEmail.emailAddress;
+    verifiedName = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || "New User";
+  } catch {
+    res.status(503).json({ error: "Unable to verify identity: Clerk API unavailable. Please retry." });
+    return;
+  }
+
+  const byEmail = await db.select().from(usersTable).where(eq(usersTable.email, verifiedEmail));
+  const pending = byEmail.find(u => u.clerkId.startsWith("pending_"));
+  if (pending) {
+    const [updated] = await db.update(usersTable)
+      .set({ clerkId, name: verifiedName })
+      .where(eq(usersTable.id, pending.id))
+      .returning();
+    res.json({ id: updated.id, clerkId: updated.clerkId, email: updated.email, name: updated.name, role: updated.role, managerId: updated.managerId, isActive: updated.isActive, createdAt: updated.createdAt, updatedAt: updated.updatedAt });
+    return;
   }
 
   const [user] = await db.insert(usersTable).values({
     clerkId,
-    email: verifiedEmail ?? "",
-    name: verifiedName ?? "New User",
+    email: verifiedEmail,
+    name: verifiedName,
     role: "BIDDER",
   }).returning();
   res.status(201).json({ id: user.id, clerkId: user.clerkId, email: user.email, name: user.name, role: user.role, managerId: user.managerId, isActive: user.isActive, createdAt: user.createdAt, updatedAt: user.updatedAt });
