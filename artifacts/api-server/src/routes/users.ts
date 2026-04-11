@@ -22,10 +22,14 @@ router.get("/users/me", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/users", requireAuth, requireRole("CHIEF_ADMIN", "BIDDER_MANAGER"), async (req, res): Promise<void> => {
+  const me = req.appUser!;
   const roleFilter = req.query.role as string | undefined;
   const users = await db.select().from(usersTable);
   const filtered = users.filter((u) => {
     if (roleFilter && u.role !== roleFilter) return false;
+    if (me.role === "BIDDER_MANAGER") {
+      return u.managerId === me.id || u.id === me.id;
+    }
     return true;
   });
   res.json(filtered.map((u) => ({
@@ -62,11 +66,16 @@ router.post("/users", requireAuth, requireRole("CHIEF_ADMIN"), async (req, res):
 });
 
 router.get("/users/:id", requireAuth, requireRole("CHIEF_ADMIN", "BIDDER_MANAGER"), async (req, res): Promise<void> => {
+  const me = req.appUser!;
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(rawId, 10);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   if (!user) {
     res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (me.role === "BIDDER_MANAGER" && user.managerId !== me.id && user.id !== me.id) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
   res.json({

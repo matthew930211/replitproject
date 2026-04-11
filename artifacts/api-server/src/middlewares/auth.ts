@@ -15,6 +15,10 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     res.status(401).json({ error: "User not found in system" });
     return;
   }
+  if (!user.isActive) {
+    res.status(403).json({ error: "Account deactivated" });
+    return;
+  }
   req.appUser = user;
   next();
 };

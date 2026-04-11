@@ -20,7 +20,12 @@ router.get("/reports", requireAuth, async (req, res): Promise<void> => {
   }, {} as Record<number, number>);
 
   const filtered = reports.filter((r) => {
-    if (me.role === "BIDDER" && r.bidderId !== me.id) return false;
+    if (me.role === "BIDDER") {
+      if (r.bidderId !== me.id) return false;
+    } else if (me.role === "BIDDER_MANAGER") {
+      const bidder = userMap[r.bidderId];
+      if (!bidder || bidder.managerId !== me.id) return false;
+    }
     if (bidderId && r.bidderId !== bidderId) return false;
     if (date && r.reportDate !== date) return false;
     return true;
@@ -78,10 +83,20 @@ router.get("/reports/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Report not found" });
     return;
   }
-  if (me.role === "BIDDER" && report.bidderId !== me.id) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
+
+  if (me.role === "BIDDER") {
+    if (report.bidderId !== me.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  } else if (me.role === "BIDDER_MANAGER") {
+    const [bidder] = await db.select().from(usersTable).where(eq(usersTable.id, report.bidderId));
+    if (!bidder || bidder.managerId !== me.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
   }
+
   const users = await db.select().from(usersTable);
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
   const feedback = await db.select().from(feedbackTable).where(eq(feedbackTable.reportId, id));
@@ -104,9 +119,20 @@ router.get("/reports/:reportId/feedback", requireAuth, async (req, res): Promise
   const rawId = Array.isArray(req.params.reportId) ? req.params.reportId[0] : req.params.reportId;
   const reportId = parseInt(rawId, 10);
 
+  const [report] = await db.select().from(reportsTable).where(eq(reportsTable.id, reportId));
+  if (!report) {
+    res.status(404).json({ error: "Report not found" });
+    return;
+  }
+
   if (me.role === "BIDDER") {
-    const [report] = await db.select().from(reportsTable).where(eq(reportsTable.id, reportId));
-    if (!report || report.bidderId !== me.id) {
+    if (report.bidderId !== me.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  } else if (me.role === "BIDDER_MANAGER") {
+    const [bidder] = await db.select().from(usersTable).where(eq(usersTable.id, report.bidderId));
+    if (!bidder || bidder.managerId !== me.id) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -130,6 +156,20 @@ router.post("/reports/:reportId/feedback", requireAuth, requireRole("CHIEF_ADMIN
   const me = req.appUser!;
   const rawId = Array.isArray(req.params.reportId) ? req.params.reportId[0] : req.params.reportId;
   const reportId = parseInt(rawId, 10);
+
+  if (me.role === "BIDDER_MANAGER") {
+    const [report] = await db.select().from(reportsTable).where(eq(reportsTable.id, reportId));
+    if (!report) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+    const [bidder] = await db.select().from(usersTable).where(eq(usersTable.id, report.bidderId));
+    if (!bidder || bidder.managerId !== me.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  }
+
   const { content } = req.body;
   if (!content) {
     res.status(400).json({ error: "Content is required" });

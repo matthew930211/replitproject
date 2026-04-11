@@ -6,10 +6,20 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 const router: IRouter = Router();
 
 router.get("/profiles", requireAuth, requireRole("CHIEF_ADMIN", "BIDDER_MANAGER"), async (req, res): Promise<void> => {
+  const me = req.appUser!;
   const profiles = await db.select().from(bidderProfilesTable).orderBy(bidderProfilesTable.userId);
   const users = await db.select().from(usersTable);
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
-  res.json(profiles.map((p) => ({
+
+  const filtered = profiles.filter((p) => {
+    if (me.role === "BIDDER_MANAGER") {
+      const bidder = userMap[p.userId];
+      return bidder?.managerId === me.id;
+    }
+    return true;
+  });
+
+  res.json(filtered.map((p) => ({
     id: p.id,
     userId: p.userId,
     userName: userMap[p.userId]?.name ?? null,
@@ -32,9 +42,19 @@ router.get("/profiles/:userId", requireAuth, async (req, res): Promise<void> => 
   const rawId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
   const userId = parseInt(rawId, 10);
 
-  if (me.role === "BIDDER" && me.id !== userId) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
+  if (me.role === "BIDDER") {
+    if (me.id !== userId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  } else if (me.role === "BIDDER_MANAGER") {
+    if (me.id !== userId) {
+      const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+      if (!targetUser || targetUser.managerId !== me.id) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
   }
 
   const [profile] = await db.select().from(bidderProfilesTable).where(eq(bidderProfilesTable.userId, userId));
@@ -80,10 +100,19 @@ router.put("/profiles/:userId", requireAuth, async (req, res): Promise<void> => 
   const me = req.appUser!;
   const rawId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
   const userId = parseInt(rawId, 10);
+
   if (me.role === "BIDDER" && me.id !== userId) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
+  if (me.role === "BIDDER_MANAGER" && me.id !== userId) {
+    const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+    if (!targetUser || targetUser.managerId !== me.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  }
+
   const { bio, phone, address, birthDate, photoObjectPath, resumeObjectPath, resumeFileName, skills, experience } = req.body as {
     bio?: string;
     phone?: string;

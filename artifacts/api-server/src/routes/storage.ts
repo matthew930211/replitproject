@@ -6,16 +6,12 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { requireAuth } from "../middlewares/auth";
+import { db, bidderProfilesTable, usersTable } from "@workspace/db";
+import { or, eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
-/**
- * POST /storage/uploads/request-url
- *
- * Request a presigned URL for file upload.
- * Requires authentication — only registered users may upload.
- */
 router.post("/storage/uploads/request-url", requireAuth, async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
@@ -25,10 +21,8 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
 
   try {
     const { name, size, contentType } = parsed.data;
-
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-
     res.json(
       RequestUploadUrlResponse.parse({
         uploadURL,
@@ -42,13 +36,6 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   }
 });
 
-/**
- * GET /storage/public-objects/*
- *
- * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
- * These are unconditionally public — no authentication or ACL checks.
- * IMPORTANT: Always provide this endpoint when object storage is set up.
- */
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
     const raw = req.params.filePath;
@@ -58,12 +45,9 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
       res.status(404).json({ error: "File not found" });
       return;
     }
-
     const response = await objectStorageService.downloadObject(file);
-
     res.status(response.status);
     response.headers.forEach((value, key) => res.setHeader(key, value));
-
     if (response.body) {
       const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
       nodeStream.pipe(res);
@@ -76,19 +60,45 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
   }
 });
 
-/**
- * GET /storage/objects/*
- *
- * Serve private object entities from PRIVATE_OBJECT_DIR.
- * Requires authentication — only logged-in users can access uploaded files.
- */
 router.get("/storage/objects/*path", requireAuth, async (req: Request, res: Response) => {
+  const me = req.appUser!;
+
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
+    if (me.role !== "CHIEF_ADMIN") {
+      const profiles = await db.select().from(bidderProfilesTable).where(
+        or(
+          eq(bidderProfilesTable.photoObjectPath, objectPath),
+          eq(bidderProfilesTable.resumeObjectPath, objectPath)
+        )
+      );
+
+      if (profiles.length === 0) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+
+      const profile = profiles[0];
+      if (me.role === "BIDDER") {
+        if (profile.userId !== me.id) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
+      } else if (me.role === "BIDDER_MANAGER") {
+        if (profile.userId !== me.id) {
+          const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, profile.userId));
+          if (!targetUser || targetUser.managerId !== me.id) {
+            res.status(403).json({ error: "Forbidden" });
+            return;
+          }
+        }
+      }
+    }
+
+    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
     const response = await objectStorageService.downloadObject(objectFile);
 
     res.status(response.status);
