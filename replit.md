@@ -64,7 +64,8 @@ Full-stack Bidder Management Platform with role-based access control, daily work
 - `POST /api/profiles/:profileId/access` — Grant bidder access (admin or manager for their bidders)
 - `DELETE /api/profiles/:profileId/access/:bidderId` — Revoke bidder access
 - `GET /api/stats` — Dashboard stats
-- `POST /api/storage/uploads/request-url` — Presigned upload URL
+- `DELETE /api/users/:id` — Delete user (CHIEF_ADMIN only, cannot delete self)
+- `POST /api/storage/uploads/request-url` — Proxy upload URL (no longer uses GCS signed URLs directly)
 
 ## Key Commands
 - `pnpm run typecheck` — full typecheck across all packages
@@ -79,6 +80,6 @@ Full-stack Bidder Management Platform with role-based access control, daily work
 - **Real-time Chat**: Team chat with 3-second polling
 - **Online Presence**: Heartbeat every 60s; "Who's Online" sidebar showing last 2 min
 - **Candidate Profiles**: Admin-managed profiles with multiple resumes and bidder access grants
-- **User Management**: Chief Admin can change roles and activate/deactivate users
+- **User Management**: Chief Admin can create, edit (name/role/manager/status), and delete users with full CRUD via actions dropdown
 - **Dashboard**: Role-aware stats overview
 - **Settings**: Simplified read-only account info card (no personal profile editing)

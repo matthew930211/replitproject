@@ -129,6 +129,26 @@ router.patch("/users/:id", requireAuth, requireRole("CHIEF_ADMIN"), async (req, 
   });
 });
 
+router.delete("/users/:id", requireAuth, requireRole("CHIEF_ADMIN"), async (req, res): Promise<void> => {
+  const me = req.appUser!;
+  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(rawId, 10);
+
+  if (id === me.id) {
+    res.status(400).json({ error: "Cannot delete your own account" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  await db.delete(usersTable).where(eq(usersTable.id, id));
+  res.json({ ok: true });
+});
+
 router.post("/users/sync", async (req, res): Promise<void> => {
   const auth = getAuth(req);
   const clerkId = auth?.userId;

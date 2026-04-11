@@ -112,6 +112,17 @@ export const UpdateUserResponse = zod.object({
 });
 
 /**
+ * @summary Delete a user (CHIEF_ADMIN only)
+ */
+export const DeleteUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteUserResponse = zod.object({
+  ok: zod.boolean().optional(),
+});
+
+/**
  * @summary List reports (filtered by role permissions)
  */
 export const ListReportsQueryParams = zod.object({

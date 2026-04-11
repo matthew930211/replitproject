@@ -291,6 +291,10 @@ export type ListUsersParams = {
   role?: string;
 };
 
+export type DeleteUser200 = {
+  ok?: boolean;
+};
+
 export type ListReportsParams = {
   bidderId?: number;
   date?: string;

@@ -15,6 +15,7 @@ export * from "./createReportBody";
 export * from "./createUserBody";
 export * from "./createUserBodyRole";
 export * from "./dashboardStats";
+export * from "./deleteUser200";
 export * from "./errorResponse";
 export * from "./feedback";
 export * from "./grantProfileAccessBody";

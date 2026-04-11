@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListUsers, useUpdateUser, useCreateUser, getListUsersQueryKey, useGetMe } from "@workspace/api-client-react";
+import { useListUsers, useUpdateUser, useCreateUser, useDeleteUser, getListUsersQueryKey, useGetMe } from "@workspace/api-client-react";
 import { UserRole, UpdateUserBodyRole, CreateUserBodyRole } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,16 +9,42 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { ShieldAlert, Shield, User as UserIcon, UserPlus } from "lucide-react";
+import { ShieldAlert, Shield, User as UserIcon, UserPlus, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Users() {
   const { data: currentUser } = useGetMe();
   const { data: users, isLoading } = useListUsers();
   const updateUser = useUpdateUser();
   const createUser = useCreateUser();
+  const deleteUser = useDeleteUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -27,6 +53,16 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<CreateUserBodyRole>(UserRole.BIDDER as CreateUserBodyRole);
   const [newManagerId, setNewManagerId] = useState<string>("");
+
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editUserId, setEditUserId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState<UpdateUserBodyRole>(UserRole.BIDDER as UpdateUserBodyRole);
+  const [editManagerId, setEditManagerId] = useState<string>("");
+  const [editIsActive, setEditIsActive] = useState(true);
+
+  const [deleteConfirmUserId, setDeleteConfirmUserId] = useState<number | null>(null);
 
   const isChiefAdmin = currentUser?.role === UserRole.CHIEF_ADMIN;
   const managers = users?.filter(u => u.role === UserRole.BIDDER_MANAGER) ?? [];
@@ -96,6 +132,55 @@ export default function Users() {
     });
   };
 
+  const openEditDialog = (user: { id: number; name: string; email: string; role: string; managerId: number | null; isActive: boolean }) => {
+    setEditUserId(user.id);
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditRole(user.role as UpdateUserBodyRole);
+    setEditManagerId(user.managerId != null ? String(user.managerId) : "none");
+    setEditIsActive(user.isActive);
+    setIsEditOpen(true);
+  };
+
+  const handleEditUser = () => {
+    if (!editUserId || !editName) {
+      toast({ title: "Name is required", variant: "destructive" });
+      return;
+    }
+    updateUser.mutate({
+      id: editUserId,
+      data: {
+        name: editName,
+        role: editRole,
+        managerId: editManagerId === "none" ? null : parseInt(editManagerId, 10),
+        isActive: editIsActive,
+      }
+    }, {
+      onSuccess: () => {
+        toast({ title: "User updated" });
+        queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+        setIsEditOpen(false);
+        setEditUserId(null);
+      },
+      onError: () => {
+        toast({ title: "Failed to update user", variant: "destructive" });
+      }
+    });
+  };
+
+  const handleDeleteUser = (userId: number) => {
+    deleteUser.mutate({ id: userId }, {
+      onSuccess: () => {
+        toast({ title: "User deleted" });
+        queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+        setDeleteConfirmUserId(null);
+      },
+      onError: () => {
+        toast({ title: "Failed to delete user", variant: "destructive" });
+      }
+    });
+  };
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case UserRole.CHIEF_ADMIN: return <ShieldAlert className="h-4 w-4 text-destructive" />;
@@ -103,6 +188,17 @@ export default function Users() {
       default: return <UserIcon className="h-4 w-4 text-muted-foreground" />;
     }
   };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case UserRole.CHIEF_ADMIN: return "Chief Admin";
+      case UserRole.BIDDER_MANAGER: return "Bidder Manager";
+      case UserRole.BIDDER: return "Bidder";
+      default: return role;
+    }
+  };
+
+  const deleteTargetUser = users?.find(u => u.id === deleteConfirmUserId);
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -210,6 +306,7 @@ export default function Users() {
                     <th className="px-4 py-3 font-medium">Manager</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium text-right">Joined</th>
+                    {isChiefAdmin && <th className="px-4 py-3 font-medium text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -220,51 +317,15 @@ export default function Users() {
                         <div className="text-xs text-muted-foreground">{u.email}</div>
                       </td>
                       <td className="px-4 py-3">
-                        {isChiefAdmin && currentUser.id !== u.id ? (
-                          <Select
-                            defaultValue={u.role}
-                            onValueChange={(val: UpdateUserBodyRole) => handleRoleChange(u.id, val)}
-                          >
-                            <SelectTrigger className="w-[160px] h-8 text-xs" data-testid={`select-role-${u.id}`}>
-                              <div className="flex items-center gap-2">
-                                {getRoleIcon(u.role)}
-                                <SelectValue />
-                              </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={UserRole.CHIEF_ADMIN}>Chief Admin</SelectItem>
-                              <SelectItem value={UserRole.BIDDER_MANAGER}>Bidder Manager</SelectItem>
-                              <SelectItem value={UserRole.BIDDER}>Bidder</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            {getRoleIcon(u.role)}
-                            <Badge variant="outline" className="text-xs">{u.role.replace('_', ' ')}</Badge>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {getRoleIcon(u.role)}
+                          <Badge variant="outline" className="text-xs">{getRoleLabel(u.role)}</Badge>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        {isChiefAdmin && u.role === UserRole.BIDDER && currentUser.id !== u.id ? (
-                          <Select
-                            value={u.managerId != null ? String(u.managerId) : "none"}
-                            onValueChange={(val) => handleManagerChange(u.id, val === "none" ? null : parseInt(val, 10))}
-                          >
-                            <SelectTrigger className="w-[160px] h-8 text-xs" data-testid={`select-manager-${u.id}`}>
-                              <SelectValue placeholder="No manager" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No manager</SelectItem>
-                              {managers.map(m => (
-                                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {u.managerId != null ? (users?.find(m => m.id === u.managerId)?.name ?? "—") : "—"}
-                          </span>
-                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {u.managerId != null ? (users?.find(m => m.id === u.managerId)?.name ?? "—") : "—"}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         {isChiefAdmin && currentUser.id !== u.id ? (
@@ -285,11 +346,40 @@ export default function Users() {
                       <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap text-xs">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
+                      {isChiefAdmin && (
+                        <td className="px-4 py-3 text-right">
+                          {currentUser.id !== u.id ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`btn-actions-${u.id}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditDialog(u)} data-testid={`btn-edit-${u.id}`}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteConfirmUserId(u.id)}
+                                  data-testid={`btn-delete-${u.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">You</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {(!users || users.length === 0) && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={isChiefAdmin ? 6 : 5} className="px-4 py-8 text-center text-muted-foreground">
                         No users found.
                       </td>
                     </tr>
@@ -300,6 +390,101 @@ export default function Users() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user details, role, and settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                data-testid="input-edit-user-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email Address</Label>
+              <Input
+                value={editEmail}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">Email cannot be changed after creation.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={editRole} onValueChange={(val: UpdateUserBodyRole) => setEditRole(val)}>
+                <SelectTrigger data-testid="select-edit-user-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UserRole.CHIEF_ADMIN}>Chief Admin</SelectItem>
+                  <SelectItem value={UserRole.BIDDER_MANAGER}>Bidder Manager</SelectItem>
+                  <SelectItem value={UserRole.BIDDER}>Bidder</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editRole === UserRole.BIDDER && (
+              <div className="space-y-2">
+                <Label>Assign Manager</Label>
+                <Select value={editManagerId} onValueChange={setEditManagerId}>
+                  <SelectTrigger data-testid="select-edit-user-manager">
+                    <SelectValue placeholder="No manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No manager</SelectItem>
+                    {managers.map(m => (
+                      <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={editIsActive}
+                onCheckedChange={setEditIsActive}
+                data-testid="switch-edit-user-active"
+              />
+              <Label>{editIsActive ? "Active" : "Inactive"}</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditUser} disabled={updateUser.isPending} data-testid="btn-submit-edit-user">
+              {updateUser.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteConfirmUserId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmUserId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{deleteTargetUser?.name}</strong> ({deleteTargetUser?.email}).
+              This action cannot be undone. Any reports, messages, and data associated with this user may also be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirmUserId && handleDeleteUser(deleteConfirmUserId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="btn-confirm-delete-user"
+            >
+              {deleteUser.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
