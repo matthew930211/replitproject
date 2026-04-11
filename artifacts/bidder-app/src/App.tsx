@@ -1,6 +1,6 @@
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -73,31 +73,66 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+type SyncState = "idle" | "syncing" | "ok" | "not_provisioned" | "error";
+
 function UserSync() {
-  const { user, isLoaded, isSignedIn } = useUser();
-  const { session } = useClerk();
+  const { isLoaded, isSignedIn } = useUser();
+  const { session, signOut } = useClerk();
+  const [syncState, setSyncState] = useState<SyncState>("idle");
   const syncedRef = useRef(false);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && user && !syncedRef.current) {
+    if (isLoaded && isSignedIn && !syncedRef.current) {
       syncedRef.current = true;
-      const primaryEmail = user.primaryEmailAddress?.emailAddress;
-      const name = user.fullName || user.firstName || primaryEmail?.split('@')[0] || "Unknown User";
-      
-      if (primaryEmail) {
-        session?.getToken().then(token => {
-          return fetch('/api/users/sync', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({ email: primaryEmail, name })
-          });
-        }).catch(err => console.error("Failed to sync user", err));
-      }
+      setSyncState("syncing");
+      session?.getToken().then(token => {
+        return fetch('/api/users/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({})
+        });
+      }).then(async res => {
+        if (res.ok) {
+          setSyncState("ok");
+        } else if (res.status === 403) {
+          setSyncState("not_provisioned");
+        } else {
+          setSyncState("error");
+        }
+      }).catch(() => {
+        setSyncState("error");
+      });
     }
-  }, [isLoaded, isSignedIn, user, session]);
+    if (isLoaded && !isSignedIn) {
+      syncedRef.current = false;
+      setSyncState("idle");
+    }
+  }, [isLoaded, isSignedIn, session]);
+
+  if (syncState === "not_provisioned") {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+        <div className="max-w-md w-full text-center space-y-4 rounded-lg border bg-card p-8 shadow">
+          <div className="text-2xl font-semibold">Access Not Provisioned</div>
+          <p className="text-muted-foreground">
+            Your account has not been set up in the system yet. Please contact an administrator to get access.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            If you believe this is an error, make sure you are using the email address your administrator used to invite you.
+          </p>
+          <button
+            onClick={() => signOut()}
+            className="mt-4 rounded bg-primary px-4 py-2 text-primary-foreground text-sm font-medium hover:bg-primary/90"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return null;
 }
@@ -130,6 +165,28 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   );
 }
 
+function AppRoutes() {
+  return (
+    <Switch>
+      <Route path="/" component={HomeRedirect} />
+      <Route path="/sign-in/*?" component={SignInPage} />
+      <Route path="/sign-up/*?" component={SignUpPage} />
+      
+      <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
+      <Route path="/reports"><ProtectedRoute component={Reports} /></Route>
+      <Route path="/reports/new"><ProtectedRoute component={NewReport} /></Route>
+      <Route path="/reports/:id"><ProtectedRoute component={ReportDetail} /></Route>
+      <Route path="/chat"><ProtectedRoute component={Chat} /></Route>
+      <Route path="/users"><ProtectedRoute component={Users} /></Route>
+      <Route path="/profiles"><ProtectedRoute component={Profiles} /></Route>
+      <Route path="/profiles/:userId"><ProtectedRoute component={ProfileDetail} /></Route>
+      <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
+
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -143,23 +200,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <UserSync />
-        <Switch>
-          <Route path="/" component={HomeRedirect} />
-          <Route path="/sign-in/*?" component={SignInPage} />
-          <Route path="/sign-up/*?" component={SignUpPage} />
-          
-          <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
-          <Route path="/reports"><ProtectedRoute component={Reports} /></Route>
-          <Route path="/reports/new"><ProtectedRoute component={NewReport} /></Route>
-          <Route path="/reports/:id"><ProtectedRoute component={ReportDetail} /></Route>
-          <Route path="/chat"><ProtectedRoute component={Chat} /></Route>
-          <Route path="/users"><ProtectedRoute component={Users} /></Route>
-          <Route path="/profiles"><ProtectedRoute component={Profiles} /></Route>
-          <Route path="/profiles/:userId"><ProtectedRoute component={ProfileDetail} /></Route>
-          <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
-
-          <Route component={NotFound} />
-        </Switch>
+        <AppRoutes />
       </QueryClientProvider>
     </ClerkProvider>
   );

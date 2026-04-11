@@ -171,13 +171,7 @@ router.post("/users/sync", async (req, res): Promise<void> => {
     return;
   }
 
-  const [user] = await db.insert(usersTable).values({
-    clerkId,
-    email: verifiedEmail,
-    name: verifiedName,
-    role: "BIDDER",
-  }).returning();
-  res.status(201).json({ id: user.id, clerkId: user.clerkId, email: user.email, name: user.name, role: user.role, managerId: user.managerId, isActive: user.isActive, createdAt: user.createdAt, updatedAt: user.updatedAt });
+  res.status(403).json({ error: "Account not provisioned. Contact an administrator to get access." });
 });
 
 export default router;
