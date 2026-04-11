@@ -157,12 +157,13 @@ router.post("/reports/:reportId/feedback", requireAuth, requireRole("CHIEF_ADMIN
   const rawId = Array.isArray(req.params.reportId) ? req.params.reportId[0] : req.params.reportId;
   const reportId = parseInt(rawId, 10);
 
+  const [report] = await db.select().from(reportsTable).where(eq(reportsTable.id, reportId));
+  if (!report) {
+    res.status(404).json({ error: "Report not found" });
+    return;
+  }
+
   if (me.role === "BIDDER_MANAGER") {
-    const [report] = await db.select().from(reportsTable).where(eq(reportsTable.id, reportId));
-    if (!report) {
-      res.status(404).json({ error: "Report not found" });
-      return;
-    }
     const [bidder] = await db.select().from(usersTable).where(eq(usersTable.id, report.bidderId));
     if (!bidder || bidder.managerId !== me.id) {
       res.status(403).json({ error: "Forbidden" });

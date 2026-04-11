@@ -5,7 +5,7 @@ import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import "@workspace/api-client-react";
+import { getGetMeQueryKey } from "@workspace/api-client-react";
 
 // Pages
 import Landing from "./pages/landing";
@@ -80,6 +80,7 @@ function UserSync() {
   const { session, signOut } = useClerk();
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const syncedRef = useRef(false);
+  const qc = useQueryClient();
 
   useEffect(() => {
     if (isLoaded && isSignedIn && !syncedRef.current) {
@@ -97,6 +98,7 @@ function UserSync() {
       }).then(async res => {
         if (res.ok) {
           setSyncState("ok");
+          await qc.invalidateQueries({ queryKey: getGetMeQueryKey() });
         } else if (res.status === 403) {
           setSyncState("not_provisioned");
         } else {
@@ -110,7 +112,7 @@ function UserSync() {
       syncedRef.current = false;
       setSyncState("idle");
     }
-  }, [isLoaded, isSignedIn, session]);
+  }, [isLoaded, isSignedIn, session, qc]);
 
   if (syncState === "not_provisioned") {
     return (
