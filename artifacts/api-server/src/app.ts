@@ -30,10 +30,15 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-const allowedOrigins = [
-  process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null,
-  process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(",")[0].trim()}` : null,
-].filter(Boolean) as string[];
+const replitDevDomain = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null;
+const replitProdDomain = process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(",")[0].trim()}` : null;
+
+function isAllowedOrigin(origin: string): boolean {
+  if (replitDevDomain && origin === replitDevDomain) return true;
+  if (replitProdDomain && origin === replitProdDomain) return true;
+  const url = new URL(origin);
+  return url.hostname.endsWith(".replit.dev") || url.hostname.endsWith(".replit.app");
+}
 
 app.use(cors({
   credentials: true,
@@ -42,11 +47,13 @@ app.use(cors({
       callback(null, true);
       return;
     }
-    if (
-      allowedOrigins.some(o => origin === o || origin.endsWith(".replit.dev") || origin.endsWith(".replit.app"))
-    ) {
-      callback(null, true);
-    } else {
+    try {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    } catch {
       callback(new Error("Not allowed by CORS"));
     }
   },
