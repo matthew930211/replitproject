@@ -20,39 +20,29 @@ interface UseUploadOptions {
   onError?: (error: Error) => void;
 }
 
+// ---------------------------------------------------------------------------
+// Module-level auth token getter (same pattern as api-client-react)
+// ---------------------------------------------------------------------------
+
+type AuthTokenGetter = () => Promise<string | null> | string | null;
+let _authTokenGetter: AuthTokenGetter | null = null;
+
 /**
- * React hook for handling file uploads with presigned URLs.
- *
- * This hook implements the two-step presigned URL upload flow:
- * 1. Request a presigned URL from your backend (sends JSON metadata, NOT the file)
- * 2. Upload the file directly to the presigned URL
- *
- * @example
- * ```tsx
- * function FileUploader() {
- *   const { uploadFile, isUploading, error } = useUpload({
- *     onSuccess: (response) => {
- *       console.log("Uploaded to:", response.objectPath);
- *     },
- *   });
- *
- *   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
- *     const file = e.target.files?.[0];
- *     if (file) {
- *       await uploadFile(file);
- *     }
- *   };
- *
- *   return (
- *     <div>
- *       <input type="file" onChange={handleFileChange} disabled={isUploading} />
- *       {isUploading && <p>Uploading...</p>}
- *       {error && <p>Error: {error.message}</p>}
- *     </div>
- *   );
- * }
- * ```
+ * Register a getter that supplies a bearer auth token for upload requests.
+ * Call this once on app startup (e.g. when the Clerk session is available).
+ * Pass null to clear the getter.
  */
+export function setUploadAuthTokenGetter(getter: AuthTokenGetter | null): void {
+  _authTokenGetter = getter;
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (!_authTokenGetter) return {};
+  const token = await _authTokenGetter();
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}
+
 export function useUpload(options: UseUploadOptions = {}) {
   const basePath = options.basePath ?? "/api/storage";
   const [isUploading, setIsUploading] = useState(false);
@@ -61,10 +51,12 @@ export function useUpload(options: UseUploadOptions = {}) {
 
   const requestUploadUrl = useCallback(
     async (file: File): Promise<UploadResponse> => {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch(`${basePath}/uploads/request-url`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders,
         },
         body: JSON.stringify({
           name: file.name,
@@ -80,7 +72,7 @@ export function useUpload(options: UseUploadOptions = {}) {
 
       return response.json();
     },
-    []
+    [basePath]
   );
 
   const uploadToPresignedUrl = useCallback(
@@ -136,10 +128,12 @@ export function useUpload(options: UseUploadOptions = {}) {
       url: string;
       headers?: Record<string, string>;
     }> => {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch(`${basePath}/uploads/request-url`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders,
         },
         body: JSON.stringify({
           name: file.name,
@@ -159,7 +153,7 @@ export function useUpload(options: UseUploadOptions = {}) {
         headers: { "Content-Type": file.type || "application/octet-stream" },
       };
     },
-    []
+    [basePath]
   );
 
   return {

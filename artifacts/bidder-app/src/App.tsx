@@ -6,6 +6,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getGetMeQueryKey, setAuthTokenGetter } from "@workspace/api-client-react";
+import { setUploadAuthTokenGetter } from "@workspace/object-storage-web";
 
 // Pages
 import Landing from "./pages/landing";
@@ -82,12 +83,15 @@ function UserSync() {
   const syncedRef = useRef(false);
   const qc = useQueryClient();
 
-  // Wire up the auth token getter so all API calls include the Bearer token
+  // Wire up auth token getters so all API calls and uploads include the Bearer token
   useEffect(() => {
     if (isLoaded && isSignedIn && session) {
-      setAuthTokenGetter(() => session.getToken());
+      const getter = () => session.getToken();
+      setAuthTokenGetter(getter);
+      setUploadAuthTokenGetter(getter);
     } else if (isLoaded && !isSignedIn) {
       setAuthTokenGetter(null);
+      setUploadAuthTokenGetter(null);
     }
   }, [isLoaded, isSignedIn, session]);
 
