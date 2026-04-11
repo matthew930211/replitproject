@@ -139,7 +139,7 @@ export default function Profiles() {
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {profiles.map((profile) => {
-                const fullName = `${profile.firstName} ${profile.lastName}`;
+                const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ") || "Unknown";
                 return (
                   <Link key={profile.id} href={`/profiles/${profile.id}`}>
                     <Card
@@ -155,7 +155,7 @@ export default function Profiles() {
                               />
                             )}
                             <AvatarFallback className="bg-primary/10 text-primary">
-                              {profile.firstName.charAt(0).toUpperCase() || <UserIcon className="h-6 w-6" />}
+                              {profile.firstName?.charAt(0)?.toUpperCase() || <UserIcon className="h-6 w-6" />}
                             </AvatarFallback>
                           </Avatar>
                           <div>

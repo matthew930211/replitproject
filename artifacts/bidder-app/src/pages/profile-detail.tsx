@@ -296,7 +296,7 @@ export default function ProfileDetail() {
     );
   }
 
-  const fullName = `${profile.firstName} ${profile.lastName}`;
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ") || "Unknown";
   const grantedBidderIds = new Set(profile.accessGrants.map((a) => a.bidderId));
   const eligibleBidders = (allUsers || []).filter((u) => {
     if (grantedBidderIds.has(u.id)) return false;
@@ -357,7 +357,7 @@ export default function ProfileDetail() {
                   />
                 )}
                 <AvatarFallback className="bg-primary/10 text-primary text-4xl">
-                  {profile.firstName.charAt(0).toUpperCase() || <UserIcon className="h-12 w-12" />}
+                  {profile.firstName?.charAt(0)?.toUpperCase() || <UserIcon className="h-12 w-12" />}
                 </AvatarFallback>
               </Avatar>
               <h2 className="text-2xl font-bold">{fullName}</h2>
