@@ -15,9 +15,9 @@ const objectStorageService = new ObjectStorageService();
 /**
  * POST /storage/uploads/request-url
  *
- * Request a presigned URL for file upload.
- * Requires authentication — only registered users may upload.
- * Records the uploader in object_uploads for downstream ACL checks.
+ * Request a proxy upload URL for file upload.
+ * Returns an internal proxy URL (/api/storage/uploads/proxy/:objectId) instead of
+ * a GCS signed URL, avoiding browser CORS issues with storage.googleapis.com.
  */
 router.post("/storage/uploads/request-url", requireAuth, async (req: Request, res: Response) => {
   const me = req.appUser!;
@@ -29,13 +29,14 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
 
   try {
     const { name, size, contentType } = parsed.data;
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    const { objectId, objectPath } = objectStorageService.createObjectEntityUploadIntent();
 
     await db.insert(objectUploadsTable).values({
       objectPath,
       uploaderId: me.id,
     });
+
+    const uploadURL = `/api/storage/uploads/proxy/${objectId}`;
 
     res.json(
       RequestUploadUrlResponse.parse({
@@ -49,6 +50,60 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
     res.status(500).json({ error: "Failed to generate upload URL" });
   }
 });
+
+/**
+ * PUT /storage/uploads/proxy/:objectId
+ *
+ * Proxy upload: receives the raw file body from the browser and writes it
+ * directly to GCS server-side. This avoids CORS issues that arise when the
+ * browser tries to PUT directly to storage.googleapis.com.
+ */
+router.put(
+  "/storage/uploads/proxy/:objectId",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const me = req.appUser!;
+    const { objectId } = req.params;
+
+    if (!objectId || !/^[0-9a-f-]{36}$/.test(objectId)) {
+      res.status(400).json({ error: "Invalid objectId" });
+      return;
+    }
+
+    const objectPath = `/objects/uploads/${objectId}`;
+
+    try {
+      const [upload] = await db
+        .select()
+        .from(objectUploadsTable)
+        .where(eq(objectUploadsTable.objectPath, objectPath));
+
+      if (!upload || upload.uploaderId !== me.id) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+
+      const file = objectStorageService.resolveObjectEntityFile(objectId);
+      const contentType = req.headers["content-type"] || "application/octet-stream";
+
+      await new Promise<void>((resolve, reject) => {
+        const writeStream = file.createWriteStream({
+          metadata: { contentType },
+          resumable: false,
+        });
+        req.pipe(writeStream);
+        writeStream.on("finish", resolve);
+        writeStream.on("error", reject);
+        req.on("error", reject);
+      });
+
+      res.status(200).json({ ok: true, objectPath });
+    } catch (error) {
+      req.log.error({ err: error }, "Proxy upload failed");
+      res.status(500).json({ error: "Upload failed" });
+    }
+  }
+);
 
 /**
  * GET /storage/public-objects/*

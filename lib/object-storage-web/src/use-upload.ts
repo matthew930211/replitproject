@@ -77,11 +77,16 @@ export function useUpload(options: UseUploadOptions = {}) {
 
   const uploadToPresignedUrl = useCallback(
     async (file: File, uploadURL: string): Promise<void> => {
+      // Include auth headers for internal proxy URLs, not for external signed URLs
+      const isExternal = uploadURL.startsWith("http://") || uploadURL.startsWith("https://");
+      const authHeaders = isExternal ? {} : await getAuthHeaders();
+
       const response = await fetch(uploadURL, {
         method: "PUT",
         body: file,
         headers: {
           "Content-Type": file.type || "application/octet-stream",
+          ...authHeaders,
         },
       });
 

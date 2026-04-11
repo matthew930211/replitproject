@@ -91,7 +91,12 @@ export class ObjectStorageService {
     return new Response(webStream, { headers });
   }
 
-  async getObjectEntityUploadURL(): Promise<string> {
+  /**
+   * Creates an upload intent: generates a UUID, computes the object path,
+   * and returns both so the caller can register it and generate a proxy URL.
+   * No GCS interaction here — avoids CORS issues on the client side.
+   */
+  createObjectEntityUploadIntent(): { objectId: string; objectPath: string } {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -100,14 +105,24 @@ export class ObjectStorageService {
       );
     }
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    return {
+      objectId,
+      objectPath: `/objects/uploads/${objectId}`,
+    };
+  }
+
+  /**
+   * Resolves an objectId to a GCS File reference (used by the proxy upload route).
+   */
+  resolveObjectEntityFile(objectId: string): File {
+    const privateObjectDir = this.getPrivateObjectDir();
+    let entityDir = privateObjectDir;
+    if (!entityDir.endsWith("/")) {
+      entityDir = `${entityDir}/`;
+    }
+    const fullPath = `${entityDir}uploads/${objectId}`;
     const { bucketName, objectName } = parseObjectPath(fullPath);
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
+    return objectStorageClient.bucket(bucketName).file(objectName);
   }
 
   async getObjectEntityFile(objectPath: string): Promise<File> {
@@ -134,6 +149,10 @@ export class ObjectStorageService {
     return objectFile;
   }
 
+  /**
+   * Normalise an objectPath that might be a GCS signed URL.
+   * Since we now use proxy URLs, this mainly passes through `/objects/...` paths.
+   */
   normalizeObjectEntityPath(rawPath: string): string {
     if (!rawPath.startsWith("https://storage.googleapis.com/")) {
       return rawPath;
@@ -166,40 +185,4 @@ function parseObjectPath(path: string): {
   const bucketName = pathParts[1];
   const objectName = pathParts.slice(2).join("/");
   return { bucketName, objectName };
-}
-
-async function signObjectURL({
-  bucketName,
-  objectName,
-  method,
-  ttlSec,
-}: {
-  bucketName: string;
-  objectName: string;
-  method: "GET" | "PUT" | "DELETE" | "HEAD";
-  ttlSec: number;
-}): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-      signal: AbortSignal.timeout(30_000),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
-    );
-  }
-  const data = (await response.json()) as { signed_url: string };
-  return data.signed_url;
 }
