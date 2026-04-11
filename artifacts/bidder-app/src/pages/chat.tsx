@@ -18,6 +18,7 @@ export default function Chat() {
   
   const { data: messages, isLoading } = useListMessages({ limit: 50 }, {
     query: {
+      queryKey: getListMessagesQueryKey({ limit: 50 }),
       refetchInterval: 3000,
     }
   });

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { useUpload } from "@workspace/object-storage-web";
+import { useUpload, type UploadResponse } from "@workspace/object-storage-web";
 import { useQueryClient } from "@tanstack/react-query";
 
 const profileSchema = z.object({
@@ -58,7 +58,7 @@ export default function Settings() {
   }, [profile, form]);
 
   const { uploadFile: uploadPhoto, isUploading: isPhotoUploading } = useUpload({
-    onSuccess: (res) => {
+    onSuccess: (res: UploadResponse) => {
       if (!user?.id) return;
       upsertProfile.mutate({ userId: user.id, data: { photoObjectPath: res.objectPath } }, {
         onSuccess: () => {
@@ -72,7 +72,7 @@ export default function Settings() {
 
   const [pendingResumeName, setPendingResumeName] = useState<string>("");
   const { uploadFile: uploadResumeFile, isUploading: isResumeUploading } = useUpload({
-    onSuccess: (res) => {
+    onSuccess: (res: UploadResponse) => {
       if (!user?.id) return;
       upsertProfile.mutate({ userId: user.id, data: { resumeObjectPath: res.objectPath, resumeFileName: pendingResumeName || res.metadata.name } }, {
         onSuccess: () => {

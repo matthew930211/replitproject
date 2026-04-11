@@ -7,7 +7,7 @@ interface UploadMetadata {
   contentType: string;
 }
 
-interface UploadResponse {
+export interface UploadResponse {
   uploadURL: string;
   objectPath: string;
   metadata: UploadMetadata;

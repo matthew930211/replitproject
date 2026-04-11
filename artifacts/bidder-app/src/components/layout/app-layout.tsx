@@ -12,7 +12,7 @@ import {
   PlusCircle,
   Menu
 } from "lucide-react";
-import { useGetMe, useGetPresence, useUpdatePresence } from "@workspace/api-client-react";
+import { useGetMe, useGetPresence, useUpdatePresence, getGetPresenceQueryKey } from "@workspace/api-client-react";
 import { UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,11 +39,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     if (!user) return;
     
     // Initial call
-    updatePresence({ data: {} });
+    updatePresence();
     
     // Poll every 60 seconds
     const interval = setInterval(() => {
-      updatePresence({ data: {} });
+      updatePresence();
     }, 60000);
     
     return () => clearInterval(interval);
@@ -51,7 +51,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const { data: presenceData } = useGetPresence({
     query: {
-      refetchInterval: 30000, // Poll every 30s
+      queryKey: getGetPresenceQueryKey(),
+      refetchInterval: 30000,
     }
   });
 

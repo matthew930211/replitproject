@@ -147,11 +147,11 @@ export default function Dashboard() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                   <span className="font-medium">Total Reports Submitted</span>
-                  <span className="text-xl font-bold">{summaries?.find(s => s.bidderId === user.id)?.totalReports || 0}</span>
+                  <span className="text-xl font-bold">{summaries?.find(s => s.bidderId === user?.id)?.totalReports || 0}</span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                   <span className="font-medium">Projects Bid</span>
-                  <span className="text-xl font-bold">{summaries?.find(s => s.bidderId === user.id)?.totalProjects || 0}</span>
+                  <span className="text-xl font-bold">{summaries?.find(s => s.bidderId === user?.id)?.totalProjects || 0}</span>
                 </div>
               </div>
             </CardContent>
