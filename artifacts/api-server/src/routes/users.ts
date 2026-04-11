@@ -140,6 +140,10 @@ router.post("/users/sync", async (req, res): Promise<void> => {
   const byClerkId = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
   if (byClerkId.length > 0) {
     const u = byClerkId[0];
+    if (!u.isActive) {
+      res.status(403).json({ error: "Account deactivated" });
+      return;
+    }
     res.json({ id: u.id, clerkId: u.clerkId, email: u.email, name: u.name, role: u.role, managerId: u.managerId, isActive: u.isActive, createdAt: u.createdAt, updatedAt: u.updatedAt });
     return;
   }
