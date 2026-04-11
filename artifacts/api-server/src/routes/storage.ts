@@ -6,13 +6,21 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { requireAuth } from "../middlewares/auth";
-import { db, bidderProfilesTable, usersTable } from "@workspace/db";
-import { or, eq } from "drizzle-orm";
+import { db, objectUploadsTable, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
+/**
+ * POST /storage/uploads/request-url
+ *
+ * Request a presigned URL for file upload.
+ * Requires authentication — only registered users may upload.
+ * Records the uploader in object_uploads for downstream ACL checks.
+ */
 router.post("/storage/uploads/request-url", requireAuth, async (req: Request, res: Response) => {
+  const me = req.appUser!;
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
@@ -23,6 +31,12 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
     const { name, size, contentType } = parsed.data;
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+    await db.insert(objectUploadsTable).values({
+      objectPath,
+      uploaderId: me.id,
+    });
+
     res.json(
       RequestUploadUrlResponse.parse({
         uploadURL,
@@ -36,6 +50,12 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   }
 });
 
+/**
+ * GET /storage/public-objects/*
+ *
+ * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
+ * These are unconditionally public — no authentication or ACL checks.
+ */
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
     const raw = req.params.filePath;
@@ -60,6 +80,15 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
   }
 });
 
+/**
+ * GET /storage/objects/*
+ *
+ * Serve private object entities from PRIVATE_OBJECT_DIR.
+ * ACL rules based on uploader ownership:
+ *  - CHIEF_ADMIN: can access any private object
+ *  - BIDDER_MANAGER: can access objects they uploaded, or uploaded by their assigned bidders
+ *  - BIDDER: can only access objects they personally uploaded
+ */
 router.get("/storage/objects/*path", requireAuth, async (req: Request, res: Response) => {
   const me = req.appUser!;
 
@@ -69,28 +98,22 @@ router.get("/storage/objects/*path", requireAuth, async (req: Request, res: Resp
     const objectPath = `/objects/${wildcardPath}`;
 
     if (me.role !== "CHIEF_ADMIN") {
-      const profiles = await db.select().from(bidderProfilesTable).where(
-        or(
-          eq(bidderProfilesTable.photoObjectPath, objectPath),
-          eq(bidderProfilesTable.resumeObjectPath, objectPath)
-        )
-      );
+      const [upload] = await db.select().from(objectUploadsTable).where(eq(objectUploadsTable.objectPath, objectPath));
 
-      if (profiles.length === 0) {
+      if (!upload) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
 
-      const profile = profiles[0];
       if (me.role === "BIDDER") {
-        if (profile.userId !== me.id) {
+        if (upload.uploaderId !== me.id) {
           res.status(403).json({ error: "Forbidden" });
           return;
         }
       } else if (me.role === "BIDDER_MANAGER") {
-        if (profile.userId !== me.id) {
-          const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, profile.userId));
-          if (!targetUser || targetUser.managerId !== me.id) {
+        if (upload.uploaderId !== me.id) {
+          const [uploaderUser] = await db.select().from(usersTable).where(eq(usersTable.id, upload.uploaderId));
+          if (!uploaderUser || uploaderUser.managerId !== me.id) {
             res.status(403).json({ error: "Forbidden" });
             return;
           }

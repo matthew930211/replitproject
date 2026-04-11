@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, bidderProfilesTable, usersTable } from "@workspace/db";
+import { db, bidderProfilesTable, usersTable, objectUploadsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -124,6 +124,33 @@ router.put("/profiles/:userId", requireAuth, async (req, res): Promise<void> => 
     skills?: string;
     experience?: string;
   };
+
+  const validateObjectPath = async (path: string): Promise<boolean> => {
+    if (me.role === "CHIEF_ADMIN") return true;
+    const [upload] = await db.select().from(objectUploadsTable).where(eq(objectUploadsTable.objectPath, path));
+    if (!upload) return false;
+    if (me.role === "BIDDER") return upload.uploaderId === me.id;
+    if (me.role === "BIDDER_MANAGER") {
+      if (upload.uploaderId === me.id) return true;
+      const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.id, upload.uploaderId));
+      return !!(targetUser && targetUser.managerId === me.id);
+    }
+    return false;
+  };
+
+  if (photoObjectPath != null) {
+    if (!(await validateObjectPath(photoObjectPath))) {
+      res.status(403).json({ error: "Unauthorized object path for photo" });
+      return;
+    }
+  }
+  if (resumeObjectPath != null) {
+    if (!(await validateObjectPath(resumeObjectPath))) {
+      res.status(403).json({ error: "Unauthorized object path for resume" });
+      return;
+    }
+  }
+
   const updateData: Partial<{
     bio: string; phone: string; address: string; birthDate: string;
     photoObjectPath: string; resumeObjectPath: string; resumeFileName: string;
