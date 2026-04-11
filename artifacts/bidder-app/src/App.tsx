@@ -5,7 +5,7 @@ import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getGetMeQueryKey } from "@workspace/api-client-react";
+import { getGetMeQueryKey, setAuthTokenGetter } from "@workspace/api-client-react";
 
 // Pages
 import Landing from "./pages/landing";
@@ -81,6 +81,15 @@ function UserSync() {
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const syncedRef = useRef(false);
   const qc = useQueryClient();
+
+  // Wire up the auth token getter so all API calls include the Bearer token
+  useEffect(() => {
+    if (isLoaded && isSignedIn && session) {
+      setAuthTokenGetter(() => session.getToken());
+    } else if (isLoaded && !isSignedIn) {
+      setAuthTokenGetter(null);
+    }
+  }, [isLoaded, isSignedIn, session]);
 
   useEffect(() => {
     if (isLoaded && isSignedIn && !syncedRef.current) {
