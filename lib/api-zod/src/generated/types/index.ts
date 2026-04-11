@@ -27,6 +27,7 @@ export * from "./reportSummaryItem";
 export * from "./requestUploadUrlBody";
 export * from "./requestUploadUrlResponse";
 export * from "./sendMessageBody";
+export * from "./syncUserBody";
 export * from "./unauthorizedResponse";
 export * from "./updateUserBody";
 export * from "./updateUserBodyRole";

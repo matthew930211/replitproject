@@ -410,13 +410,45 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /storage/objects/{objectPath}:
+  /users/sync:
+    post:
+      operationId: syncUser
+      tags: [users]
+      summary: Sync/provision user on first login (Clerk webhook or client call)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Existing user found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "201":
+          description: New user provisioned as BIDDER
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /storage/public-objects/{filePath}:
     get:
-      operationId: getObject
+      operationId: getPublicObject
       tags: [storage]
-      summary: Serve a stored object
+      summary: Serve a public storage object (no auth required)
       parameters:
-        - name: objectPath
+        - name: filePath
           in: path
           required: true
           schema:
@@ -424,6 +456,28 @@ paths:
       responses:
         "200":
           description: Object content
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getObject
+      tags: [storage]
+      summary: Serve a private stored object (auth + ownership required)
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Object path identifier (backend uses wildcard matching internally)
+      responses:
+        "200":
+          description: Object content
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden – object not owned by caller
 
   # Stats
   /stats/dashboard:
@@ -525,10 +579,9 @@ components:
     CreateUserBody:
       type: object
       properties:
-        clerkId:
-          type: string
         email:
           type: string
+          description: Email address for the new user. Must be unique. On first sign-in the Clerk account is linked by email.
         name:
           type: string
         role:
@@ -536,8 +589,8 @@ components:
           enum: [CHIEF_ADMIN, BIDDER_MANAGER, BIDDER]
         managerId:
           type: ["integer", "null"]
+          description: Required when role is BIDDER – sets the responsible manager
       required:
-        - clerkId
         - email
         - name
         - role
@@ -697,7 +750,7 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: ["integer", "null"]
         userId:
           type: integer
         userName:
@@ -721,14 +774,11 @@ components:
         experience:
           type: ["string", "null"]
         createdAt:
-          type: string
+          type: ["string", "null"]
         updatedAt:
-          type: string
+          type: ["string", "null"]
       required:
-        - id
         - userId
-        - createdAt
-        - updatedAt
 
     UpsertProfileBody:
       type: object

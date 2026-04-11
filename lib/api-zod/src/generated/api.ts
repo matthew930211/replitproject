@@ -38,11 +38,17 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem);
  * @summary Create a user (admin only)
  */
 export const CreateUserBody = zod.object({
-  clerkId: zod.string(),
-  email: zod.string(),
+  email: zod
+    .string()
+    .describe(
+      "Email address for the new user. Must be unique. On first sign-in the Clerk account is linked by email.",
+    ),
   name: zod.string(),
   role: zod.enum(["CHIEF_ADMIN", "BIDDER_MANAGER", "BIDDER"]),
-  managerId: zod.number().nullish(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("Required when role is BIDDER – sets the responsible manager"),
 });
 
 /**
@@ -233,7 +239,7 @@ export const UpdatePresenceResponse = zod.object({
  * @summary List bidder profiles
  */
 export const ListProfilesResponseItem = zod.object({
-  id: zod.number(),
+  id: zod.number().nullish(),
   userId: zod.number(),
   userName: zod.string().nullish(),
   bio: zod.string().nullish(),
@@ -245,8 +251,8 @@ export const ListProfilesResponseItem = zod.object({
   resumeFileName: zod.string().nullish(),
   skills: zod.string().nullish(),
   experience: zod.string().nullish(),
-  createdAt: zod.string(),
-  updatedAt: zod.string(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
 });
 export const ListProfilesResponse = zod.array(ListProfilesResponseItem);
 
@@ -258,7 +264,7 @@ export const GetProfileParams = zod.object({
 });
 
 export const GetProfileResponse = zod.object({
-  id: zod.number(),
+  id: zod.number().nullish(),
   userId: zod.number(),
   userName: zod.string().nullish(),
   bio: zod.string().nullish(),
@@ -270,8 +276,8 @@ export const GetProfileResponse = zod.object({
   resumeFileName: zod.string().nullish(),
   skills: zod.string().nullish(),
   experience: zod.string().nullish(),
-  createdAt: zod.string(),
-  updatedAt: zod.string(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
 });
 
 /**
@@ -294,7 +300,7 @@ export const UpsertProfileBody = zod.object({
 });
 
 export const UpsertProfileResponse = zod.object({
-  id: zod.number(),
+  id: zod.number().nullish(),
   userId: zod.number(),
   userName: zod.string().nullish(),
   bio: zod.string().nullish(),
@@ -306,8 +312,8 @@ export const UpsertProfileResponse = zod.object({
   resumeFileName: zod.string().nullish(),
   skills: zod.string().nullish(),
   experience: zod.string().nullish(),
-  createdAt: zod.string(),
-  updatedAt: zod.string(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
 });
 
 /**
@@ -325,7 +331,34 @@ export const RequestUploadUrlResponse = zod.object({
 });
 
 /**
- * @summary Serve a stored object
+ * @summary Sync/provision user on first login (Clerk webhook or client call)
+ */
+export const SyncUserBody = zod.object({
+  email: zod.string().optional(),
+  name: zod.string().optional(),
+});
+
+export const SyncUserResponse = zod.object({
+  id: zod.number(),
+  clerkId: zod.string(),
+  email: zod.string(),
+  name: zod.string(),
+  role: zod.enum(["CHIEF_ADMIN", "BIDDER_MANAGER", "BIDDER"]),
+  managerId: zod.number().nullish(),
+  isActive: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Serve a public storage object (no auth required)
+ */
+export const GetPublicObjectParams = zod.object({
+  filePath: zod.coerce.string(),
+});
+
+/**
+ * @summary Serve a private stored object (auth + ownership required)
  */
 export const GetObjectParams = zod.object({
   objectPath: zod.coerce.string(),

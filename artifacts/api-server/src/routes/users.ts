@@ -46,12 +46,18 @@ router.get("/users", requireAuth, requireRole("CHIEF_ADMIN", "BIDDER_MANAGER"), 
 });
 
 router.post("/users", requireAuth, requireRole("CHIEF_ADMIN"), async (req, res): Promise<void> => {
-  const { clerkId, email, name, role, managerId } = req.body;
-  if (!clerkId || !email || !name || !role) {
-    res.status(400).json({ error: "Missing required fields" });
+  const { email, name, role, managerId } = req.body as { email?: string; name?: string; role?: string; managerId?: number | null };
+  if (!email || !name || !role) {
+    res.status(400).json({ error: "Missing required fields: email, name, role" });
     return;
   }
-  const [user] = await db.insert(usersTable).values({ clerkId, email, name, role, managerId: managerId ?? null }).returning();
+  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  if (existing.length > 0) {
+    res.status(409).json({ error: "A user with that email already exists" });
+    return;
+  }
+  const placeholderClerkId = `pending_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const [user] = await db.insert(usersTable).values({ clerkId: placeholderClerkId, email, name, role: role as "CHIEF_ADMIN" | "BIDDER_MANAGER" | "BIDDER", managerId: managerId ?? null }).returning();
   res.status(201).json({
     id: user.id,
     clerkId: user.clerkId,
@@ -131,12 +137,27 @@ router.post("/users/sync", async (req, res): Promise<void> => {
     return;
   }
   const { email, name } = req.body as { email?: string; name?: string };
-  const existing = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
-  if (existing.length > 0) {
-    const u = existing[0];
+
+  const byClerkId = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+  if (byClerkId.length > 0) {
+    const u = byClerkId[0];
     res.json({ id: u.id, clerkId: u.clerkId, email: u.email, name: u.name, role: u.role, managerId: u.managerId, isActive: u.isActive, createdAt: u.createdAt, updatedAt: u.updatedAt });
     return;
   }
+
+  if (email) {
+    const byEmail = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    const pending = byEmail.find(u => u.clerkId.startsWith("pending_"));
+    if (pending) {
+      const [updated] = await db.update(usersTable)
+        .set({ clerkId, name: name ?? pending.name })
+        .where(eq(usersTable.id, pending.id))
+        .returning();
+      res.json({ id: updated.id, clerkId: updated.clerkId, email: updated.email, name: updated.name, role: updated.role, managerId: updated.managerId, isActive: updated.isActive, createdAt: updated.createdAt, updatedAt: updated.updatedAt });
+      return;
+    }
+  }
+
   const [user] = await db.insert(usersTable).values({
     clerkId,
     email: email ?? "",

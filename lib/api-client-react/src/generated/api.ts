@@ -36,6 +36,7 @@ import type {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   SendMessageBody,
+  SyncUserBody,
   UnauthorizedResponse,
   UpdateUserBody,
   UpsertProfileBody,
@@ -1646,7 +1647,181 @@ export const useRequestUploadUrl = <
 };
 
 /**
- * @summary Serve a stored object
+ * @summary Sync/provision user on first login (Clerk webhook or client call)
+ */
+export const getSyncUserUrl = () => {
+  return `/api/users/sync`;
+};
+
+export const syncUser = async (
+  syncUserBody?: SyncUserBody,
+  options?: RequestInit,
+): Promise<User> => {
+  return customFetch<User>(getSyncUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(syncUserBody),
+  });
+};
+
+export const getSyncUserMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncUser>>,
+    TError,
+    { data: BodyType<SyncUserBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncUser>>,
+  TError,
+  { data: BodyType<SyncUserBody> },
+  TContext
+> => {
+  const mutationKey = ["syncUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncUser>>,
+    { data: BodyType<SyncUserBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return syncUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof syncUser>>
+>;
+export type SyncUserMutationBody = BodyType<SyncUserBody>;
+export type SyncUserMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Sync/provision user on first login (Clerk webhook or client call)
+ */
+export const useSyncUser = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncUser>>,
+    TError,
+    { data: BodyType<SyncUserBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncUser>>,
+  TError,
+  { data: BodyType<SyncUserBody> },
+  TContext
+> => {
+  return useMutation(getSyncUserMutationOptions(options));
+};
+
+/**
+ * @summary Serve a public storage object (no auth required)
+ */
+export const getGetPublicObjectUrl = (filePath: string) => {
+  return `/api/storage/public-objects/${filePath}`;
+};
+
+export const getPublicObject = async (
+  filePath: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getGetPublicObjectUrl(filePath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicObjectQueryKey = (filePath: string) => {
+  return [`/api/storage/public-objects/${filePath}`] as const;
+};
+
+export const getGetPublicObjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicObject>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPublicObjectQueryKey(filePath);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicObject>>> = ({
+    signal,
+  }) => getPublicObject(filePath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!filePath,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicObject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicObjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicObject>>
+>;
+export type GetPublicObjectQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Serve a public storage object (no auth required)
+ */
+
+export function useGetPublicObject<
+  TData = Awaited<ReturnType<typeof getPublicObject>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicObjectQueryOptions(filePath, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Serve a private stored object (auth + ownership required)
  */
 export const getGetObjectUrl = (objectPath: string) => {
   return `/api/storage/objects/${objectPath}`;
@@ -1668,7 +1843,7 @@ export const getGetObjectQueryKey = (objectPath: string) => {
 
 export const getGetObjectQueryOptions = <
   TData = Awaited<ReturnType<typeof getObject>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<UnauthorizedResponse | void>,
 >(
   objectPath: string,
   options?: {
@@ -1701,15 +1876,15 @@ export const getGetObjectQueryOptions = <
 export type GetObjectQueryResult = NonNullable<
   Awaited<ReturnType<typeof getObject>>
 >;
-export type GetObjectQueryError = ErrorType<unknown>;
+export type GetObjectQueryError = ErrorType<UnauthorizedResponse | void>;
 
 /**
- * @summary Serve a stored object
+ * @summary Serve a private stored object (auth + ownership required)
  */
 
 export function useGetObject<
   TData = Awaited<ReturnType<typeof getObject>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<UnauthorizedResponse | void>,
 >(
   objectPath: string,
   options?: {

@@ -8,10 +8,13 @@
 import type { CreateUserBodyRole } from "./createUserBodyRole";
 
 export interface CreateUserBody {
-  clerkId: string;
+  /** Email address for the new user. Must be unique. On first sign-in the Clerk account is linked by email. */
   email: string;
   name: string;
   role: CreateUserBodyRole;
-  /** @nullable */
+  /**
+   * Required when role is BIDDER – sets the responsible manager
+   * @nullable
+   */
   managerId?: number | null;
 }

@@ -7,7 +7,8 @@
  */
 
 export interface BidderProfile {
-  id: number;
+  /** @nullable */
+  id?: number | null;
   userId: number;
   /** @nullable */
   userName?: string | null;
@@ -29,6 +30,8 @@ export interface BidderProfile {
   skills?: string | null;
   /** @nullable */
   experience?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  /** @nullable */
+  createdAt?: string | null;
+  /** @nullable */
+  updatedAt?: string | null;
 }

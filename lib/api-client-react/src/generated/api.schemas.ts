@@ -44,11 +44,14 @@ export const CreateUserBodyRole = {
 } as const;
 
 export interface CreateUserBody {
-  clerkId: string;
+  /** Email address for the new user. Must be unique. On first sign-in the Clerk account is linked by email. */
   email: string;
   name: string;
   role: CreateUserBodyRole;
-  /** @nullable */
+  /**
+   * Required when role is BIDDER – sets the responsible manager
+   * @nullable
+   */
   managerId?: number | null;
 }
 
@@ -135,7 +138,8 @@ export interface PresenceUpdateResponse {
 }
 
 export interface BidderProfile {
-  id: number;
+  /** @nullable */
+  id?: number | null;
   userId: number;
   /** @nullable */
   userName?: string | null;
@@ -157,8 +161,10 @@ export interface BidderProfile {
   skills?: string | null;
   /** @nullable */
   experience?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  /** @nullable */
+  createdAt?: string | null;
+  /** @nullable */
+  updatedAt?: string | null;
 }
 
 export interface UpsertProfileBody {
@@ -225,4 +231,9 @@ export type ListReportsParams = {
 
 export type ListMessagesParams = {
   limit?: number;
+};
+
+export type SyncUserBody = {
+  email?: string;
+  name?: string;
 };
