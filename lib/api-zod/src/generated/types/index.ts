@@ -33,6 +33,7 @@ export * from "./report";
 export * from "./reportSummaryItem";
 export * from "./requestUploadUrlBody";
 export * from "./requestUploadUrlResponse";
+export * from "./requestUploadUrlResponseMetadata";
 export * from "./sendMessageBody";
 export * from "./unauthorizedResponse";
 export * from "./updateProfileBody";

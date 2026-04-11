@@ -237,9 +237,16 @@ export interface RequestUploadUrlBody {
   contentType: string;
 }
 
+export type RequestUploadUrlResponseMetadata = {
+  name: string;
+  size: number;
+  contentType: string;
+};
+
 export interface RequestUploadUrlResponse {
   uploadURL: string;
   objectPath: string;
+  metadata: RequestUploadUrlResponseMetadata;
 }
 
 export interface DashboardStats {

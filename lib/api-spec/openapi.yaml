@@ -1098,9 +1098,23 @@ components:
           type: string
         objectPath:
           type: string
+        metadata:
+          type: object
+          properties:
+            name:
+              type: string
+            size:
+              type: number
+            contentType:
+              type: string
+          required:
+            - name
+            - size
+            - contentType
       required:
         - uploadURL
         - objectPath
+        - metadata
 
     DashboardStats:
       type: object

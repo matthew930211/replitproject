@@ -38,13 +38,11 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
 
     const uploadURL = `/api/storage/uploads/proxy/${objectId}`;
 
-    res.json(
-      RequestUploadUrlResponse.parse({
-        uploadURL,
-        objectPath,
-        metadata: { name, size, contentType },
-      }),
-    );
+    res.json({
+      uploadURL,
+      objectPath,
+      metadata: { name, size, contentType },
+    });
   } catch (error) {
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });

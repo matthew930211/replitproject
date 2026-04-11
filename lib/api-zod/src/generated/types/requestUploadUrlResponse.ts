@@ -5,8 +5,10 @@
  * Bidder Management Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { RequestUploadUrlResponseMetadata } from "./requestUploadUrlResponseMetadata";
 
 export interface RequestUploadUrlResponse {
   uploadURL: string;
   objectPath: string;
+  metadata: RequestUploadUrlResponseMetadata;
 }
