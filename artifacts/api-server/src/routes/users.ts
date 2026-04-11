@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
-import { getAuth } from "@clerk/express";
+import { getAuth, clerkClient } from "@clerk/express";
 
 const router: IRouter = Router();
 
@@ -136,7 +136,6 @@ router.post("/users/sync", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { email, name } = req.body as { email?: string; name?: string };
 
   const byClerkId = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
   if (byClerkId.length > 0) {
@@ -145,12 +144,26 @@ router.post("/users/sync", async (req, res): Promise<void> => {
     return;
   }
 
-  if (email) {
-    const byEmail = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  let verifiedEmail: string | undefined;
+  let verifiedName: string | undefined;
+  try {
+    const clerkUser = await clerkClient.users.getUser(clerkId);
+    const primaryEmail = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId);
+    verifiedEmail = primaryEmail?.emailAddress;
+    verifiedName = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || undefined;
+  } catch {
+    // If Clerk lookup fails, proceed with body values as fallback (best-effort)
+    const body = req.body as { email?: string; name?: string };
+    verifiedEmail = body.email;
+    verifiedName = body.name;
+  }
+
+  if (verifiedEmail) {
+    const byEmail = await db.select().from(usersTable).where(eq(usersTable.email, verifiedEmail));
     const pending = byEmail.find(u => u.clerkId.startsWith("pending_"));
     if (pending) {
       const [updated] = await db.update(usersTable)
-        .set({ clerkId, name: name ?? pending.name })
+        .set({ clerkId, name: verifiedName ?? pending.name })
         .where(eq(usersTable.id, pending.id))
         .returning();
       res.json({ id: updated.id, clerkId: updated.clerkId, email: updated.email, name: updated.name, role: updated.role, managerId: updated.managerId, isActive: updated.isActive, createdAt: updated.createdAt, updatedAt: updated.updatedAt });
@@ -160,8 +173,8 @@ router.post("/users/sync", async (req, res): Promise<void> => {
 
   const [user] = await db.insert(usersTable).values({
     clerkId,
-    email: email ?? "",
-    name: name ?? "New User",
+    email: verifiedEmail ?? "",
+    name: verifiedName ?? "New User",
     role: "BIDDER",
   }).returning();
   res.status(201).json({ id: user.id, clerkId: user.clerkId, email: user.email, name: user.name, role: user.role, managerId: user.managerId, isActive: user.isActive, createdAt: user.createdAt, updatedAt: user.updatedAt });
