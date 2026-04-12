@@ -10,7 +10,8 @@ import {
   Settings,
   LogOut,
   PlusCircle,
-  Menu
+  Menu,
+  Briefcase
 } from "lucide-react";
 import { useGetMe } from "@workspace/api-client-react";
 import { UserRole } from "@workspace/api-client-react";
@@ -67,6 +68,12 @@ export function AppLayout({ children }: AppLayoutProps) {
       icon: MessageSquare,
       roles: [UserRole.CHIEF_ADMIN, UserRole.BIDDER_MANAGER, UserRole.BIDDER],
       action: () => setChatOpen(true),
+    },
+    {
+      title: "Jobs",
+      href: "/jobs",
+      icon: Briefcase,
+      roles: [UserRole.CHIEF_ADMIN, UserRole.BIDDER_MANAGER, UserRole.BIDDER],
     },
     {
       title: "Candidate Profiles",

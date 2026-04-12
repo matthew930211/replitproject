@@ -7,6 +7,7 @@ import presenceRouter from "./presence";
 import profilesRouter from "./profiles";
 import statsRouter from "./stats";
 import storageRouter from "./storage";
+import jobsRouter from "./jobs";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(presenceRouter);
 router.use(profilesRouter);
 router.use(statsRouter);
 router.use(storageRouter);
+router.use(jobsRouter);
 
 export default router;

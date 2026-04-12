@@ -26,6 +26,8 @@ tags:
     description: File storage
   - name: stats
     description: Statistics and summaries
+  - name: jobs
+    description: Job tracking
 paths:
   /healthz:
     get:
@@ -690,6 +692,101 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List all jobs
+      responses:
+        "200":
+          description: Jobs list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Create a new job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobBody"
+      responses:
+        "201":
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jobs/{jobId}:
+    parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a job by ID
+      responses:
+        "200":
+          description: Job detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateJob
+      tags: [jobs]
+      summary: Update a job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJobBody"
+      responses:
+        "200":
+          description: Job updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteJob
+      tags: [jobs]
+      summary: Delete a job
+      responses:
+        "200":
+          description: Job deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   responses:
     Unauthorized:
@@ -1194,3 +1291,109 @@ components:
 
     UpsertProfileBody:
       $ref: "#/components/schemas/UpdateProfileBody"
+
+    EmploymentType:
+      type: string
+      enum: [ONSITE, HYBRID, REMOTE]
+
+    JobStatus:
+      type: string
+      enum: [NEW, APPLIED, SCHEDULED, INTERVIEWING, OFFERED, REJECTED, WITHDRAWN]
+
+    EvaluationStatus:
+      type: string
+      enum: [PENDING, PERFECT, GOOD, AVERAGE, BAD]
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date-time
+        companyName:
+          type: string
+        jobTitle:
+          type: string
+        detailLink:
+          type: ["string", "null"]
+        requiredSkills:
+          type: ["string", "null"]
+        employmentType:
+          $ref: "#/components/schemas/EmploymentType"
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        evaluationStatus:
+          $ref: "#/components/schemas/EvaluationStatus"
+        evaluationComments:
+          type: ["string", "null"]
+        createdById:
+          type: ["integer", "null"]
+        createdByName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - date
+        - companyName
+        - jobTitle
+        - employmentType
+        - status
+        - evaluationStatus
+        - createdAt
+        - updatedAt
+
+    CreateJobBody:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        companyName:
+          type: string
+        jobTitle:
+          type: string
+        detailLink:
+          type: string
+        requiredSkills:
+          type: string
+        employmentType:
+          $ref: "#/components/schemas/EmploymentType"
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        evaluationStatus:
+          $ref: "#/components/schemas/EvaluationStatus"
+        evaluationComments:
+          type: string
+      required:
+        - companyName
+        - jobTitle
+
+    UpdateJobBody:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        companyName:
+          type: string
+        jobTitle:
+          type: string
+        detailLink:
+          type: string
+        requiredSkills:
+          type: string
+        employmentType:
+          $ref: "#/components/schemas/EmploymentType"
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        evaluationStatus:
+          $ref: "#/components/schemas/EvaluationStatus"
+        evaluationComments:
+          type: string

@@ -277,6 +277,84 @@ export type BidderProfile = CandidateProfile;
 
 export type UpsertProfileBody = UpdateProfileBody;
 
+export type EmploymentType =
+  (typeof EmploymentType)[keyof typeof EmploymentType];
+
+export const EmploymentType = {
+  ONSITE: "ONSITE",
+  HYBRID: "HYBRID",
+  REMOTE: "REMOTE",
+} as const;
+
+export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
+
+export const JobStatus = {
+  NEW: "NEW",
+  APPLIED: "APPLIED",
+  SCHEDULED: "SCHEDULED",
+  INTERVIEWING: "INTERVIEWING",
+  OFFERED: "OFFERED",
+  REJECTED: "REJECTED",
+  WITHDRAWN: "WITHDRAWN",
+} as const;
+
+export type EvaluationStatus =
+  (typeof EvaluationStatus)[keyof typeof EvaluationStatus];
+
+export const EvaluationStatus = {
+  PENDING: "PENDING",
+  PERFECT: "PERFECT",
+  GOOD: "GOOD",
+  AVERAGE: "AVERAGE",
+  BAD: "BAD",
+} as const;
+
+export interface Job {
+  id: number;
+  date: string;
+  companyName: string;
+  jobTitle: string;
+  /** @nullable */
+  detailLink?: string | null;
+  /** @nullable */
+  requiredSkills?: string | null;
+  employmentType: EmploymentType;
+  status: JobStatus;
+  evaluationStatus: EvaluationStatus;
+  /** @nullable */
+  evaluationComments?: string | null;
+  /** @nullable */
+  createdById?: number | null;
+  /** @nullable */
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateJobBody {
+  date?: string;
+  companyName: string;
+  jobTitle: string;
+  detailLink?: string;
+  requiredSkills?: string;
+  employmentType?: EmploymentType;
+  status?: JobStatus;
+  evaluationStatus?: EvaluationStatus;
+  evaluationComments?: string;
+}
+
+export interface UpdateJobBody {
+  date?: string;
+  companyName?: string;
+  jobTitle?: string;
+  detailLink?: string;
+  requiredSkills?: string;
+  employmentType?: EmploymentType;
+  status?: JobStatus;
+  evaluationStatus?: EvaluationStatus;
+  evaluationComments?: string;
+}
+
 /**
  * Unauthorized
  */

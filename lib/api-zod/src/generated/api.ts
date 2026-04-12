@@ -559,3 +559,158 @@ export const GetReportsSummaryResponseItem = zod.object({
 export const GetReportsSummaryResponse = zod.array(
   GetReportsSummaryResponseItem,
 );
+
+/**
+ * @summary List all jobs
+ */
+export const ListJobsResponseItem = zod.object({
+  id: zod.number(),
+  date: zod.coerce.date(),
+  companyName: zod.string(),
+  jobTitle: zod.string(),
+  detailLink: zod.string().nullish(),
+  requiredSkills: zod.string().nullish(),
+  employmentType: zod.enum(["ONSITE", "HYBRID", "REMOTE"]),
+  status: zod.enum([
+    "NEW",
+    "APPLIED",
+    "SCHEDULED",
+    "INTERVIEWING",
+    "OFFERED",
+    "REJECTED",
+    "WITHDRAWN",
+  ]),
+  evaluationStatus: zod.enum(["PENDING", "PERFECT", "GOOD", "AVERAGE", "BAD"]),
+  evaluationComments: zod.string().nullish(),
+  createdById: zod.number().nullish(),
+  createdByName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListJobsResponse = zod.array(ListJobsResponseItem);
+
+/**
+ * @summary Create a new job
+ */
+export const CreateJobBody = zod.object({
+  date: zod.coerce.date().optional(),
+  companyName: zod.string(),
+  jobTitle: zod.string(),
+  detailLink: zod.string().optional(),
+  requiredSkills: zod.string().optional(),
+  employmentType: zod.enum(["ONSITE", "HYBRID", "REMOTE"]).optional(),
+  status: zod
+    .enum([
+      "NEW",
+      "APPLIED",
+      "SCHEDULED",
+      "INTERVIEWING",
+      "OFFERED",
+      "REJECTED",
+      "WITHDRAWN",
+    ])
+    .optional(),
+  evaluationStatus: zod
+    .enum(["PENDING", "PERFECT", "GOOD", "AVERAGE", "BAD"])
+    .optional(),
+  evaluationComments: zod.string().optional(),
+});
+
+/**
+ * @summary Get a job by ID
+ */
+export const GetJobParams = zod.object({
+  jobId: zod.coerce.number(),
+});
+
+export const GetJobResponse = zod.object({
+  id: zod.number(),
+  date: zod.coerce.date(),
+  companyName: zod.string(),
+  jobTitle: zod.string(),
+  detailLink: zod.string().nullish(),
+  requiredSkills: zod.string().nullish(),
+  employmentType: zod.enum(["ONSITE", "HYBRID", "REMOTE"]),
+  status: zod.enum([
+    "NEW",
+    "APPLIED",
+    "SCHEDULED",
+    "INTERVIEWING",
+    "OFFERED",
+    "REJECTED",
+    "WITHDRAWN",
+  ]),
+  evaluationStatus: zod.enum(["PENDING", "PERFECT", "GOOD", "AVERAGE", "BAD"]),
+  evaluationComments: zod.string().nullish(),
+  createdById: zod.number().nullish(),
+  createdByName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a job
+ */
+export const UpdateJobParams = zod.object({
+  jobId: zod.coerce.number(),
+});
+
+export const UpdateJobBody = zod.object({
+  date: zod.coerce.date().optional(),
+  companyName: zod.string().optional(),
+  jobTitle: zod.string().optional(),
+  detailLink: zod.string().optional(),
+  requiredSkills: zod.string().optional(),
+  employmentType: zod.enum(["ONSITE", "HYBRID", "REMOTE"]).optional(),
+  status: zod
+    .enum([
+      "NEW",
+      "APPLIED",
+      "SCHEDULED",
+      "INTERVIEWING",
+      "OFFERED",
+      "REJECTED",
+      "WITHDRAWN",
+    ])
+    .optional(),
+  evaluationStatus: zod
+    .enum(["PENDING", "PERFECT", "GOOD", "AVERAGE", "BAD"])
+    .optional(),
+  evaluationComments: zod.string().optional(),
+});
+
+export const UpdateJobResponse = zod.object({
+  id: zod.number(),
+  date: zod.coerce.date(),
+  companyName: zod.string(),
+  jobTitle: zod.string(),
+  detailLink: zod.string().nullish(),
+  requiredSkills: zod.string().nullish(),
+  employmentType: zod.enum(["ONSITE", "HYBRID", "REMOTE"]),
+  status: zod.enum([
+    "NEW",
+    "APPLIED",
+    "SCHEDULED",
+    "INTERVIEWING",
+    "OFFERED",
+    "REJECTED",
+    "WITHDRAWN",
+  ]),
+  evaluationStatus: zod.enum(["PENDING", "PERFECT", "GOOD", "AVERAGE", "BAD"]),
+  evaluationComments: zod.string().nullish(),
+  createdById: zod.number().nullish(),
+  createdByName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a job
+ */
+export const DeleteJobParams = zod.object({
+  jobId: zod.coerce.number(),
+});
+
+export const DeleteJobResponse = zod.object({
+  ok: zod.boolean(),
+});

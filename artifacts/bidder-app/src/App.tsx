@@ -20,6 +20,7 @@ import Chat from "./pages/chat";
 import Users from "./pages/users";
 import Profiles from "./pages/profiles";
 import ProfileDetail from "./pages/profile-detail";
+import Jobs from "./pages/jobs";
 import Settings from "./pages/settings";
 import NotFound from "./pages/not-found";
 import { AppLayout } from "./components/layout/app-layout";
@@ -192,6 +193,7 @@ function AppRoutes() {
       <Route path="/reports/:id"><ProtectedRoute component={ReportDetail} /></Route>
       <Route path="/chat"><ProtectedRoute component={Chat} /></Route>
       <Route path="/users"><ProtectedRoute component={Users} /></Route>
+      <Route path="/jobs"><ProtectedRoute component={Jobs} /></Route>
       <Route path="/profiles"><ProtectedRoute component={Profiles} /></Route>
       <Route path="/profiles/:profileId"><ProtectedRoute component={ProfileDetail} /></Route>
       <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
