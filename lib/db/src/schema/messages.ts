@@ -6,6 +6,9 @@ export const messagesTable = pgTable("messages", {
   id: serial("id").primaryKey(),
   senderId: integer("sender_id").notNull(),
   content: text("content").notNull(),
+  replyToId: integer("reply_to_id"),
+  replyToContent: text("reply_to_content"),
+  replyToSenderName: text("reply_to_sender_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
