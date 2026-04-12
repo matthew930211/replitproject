@@ -22,7 +22,7 @@ Full-stack Bidder Management Platform with role-based access control, daily work
 ## Architecture
 
 ### Artifacts
-- **API Server** (`artifacts/api-server/`): Express 5 backend at port 8080, protected by Clerk middleware
+- **API Server** (`artifacts/api-server/`): Express 5 backend at port 8080, protected by Clerk middleware, WebSocket server at `/api/ws`
 - **Bidder App** (`artifacts/bidder-app/`): React + Vite frontend at port 20908, previewPath: `/`
 
 ### Packages
@@ -77,8 +77,8 @@ Full-stack Bidder Management Platform with role-based access control, daily work
 - **Authentication**: Clerk auth with auto-sync to DB on first sign-in
 - **Daily Reports**: Bidders submit reports with projects bid, outcomes, notes
 - **Feedback Thread**: Admins/managers add inline feedback on reports
-- **Real-time Chat**: Team chat with 3-second polling
-- **Online Presence**: Heartbeat every 60s; "Who's Online" sidebar showing last 2 min
+- **Real-time Chat**: WebSocket-powered team chat with persistent floating widget accessible from any page. Unread count badge shown in sidebar and chat button.
+- **Online Presence**: WebSocket-based real-time presence tracking; "Who's Online" sidebar updates instantly on connect/disconnect
 - **Candidate Profiles**: Admin-managed profiles with multiple resumes and bidder access grants
 - **User Management**: Chief Admin can create, edit (name/role/manager/status), and delete users with full CRUD via actions dropdown
 - **Dashboard**: Role-aware stats overview

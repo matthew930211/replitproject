@@ -7,6 +7,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getGetMeQueryKey, setAuthTokenGetter } from "@workspace/api-client-react";
 import { setUploadAuthTokenGetter } from "@workspace/object-storage-web";
+import { WebSocketProvider } from "./lib/websocket";
+import { ChatWidget } from "./components/chat-widget";
 
 // Pages
 import Landing from "./pages/landing";
@@ -212,7 +214,12 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <UserSync />
-        <AppRoutes />
+        <WebSocketProvider>
+          <AppRoutes />
+          <Show when="signed-in">
+            <ChatWidget />
+          </Show>
+        </WebSocketProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );

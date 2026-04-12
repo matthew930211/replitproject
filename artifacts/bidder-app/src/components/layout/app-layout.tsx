@@ -12,15 +12,15 @@ import {
   PlusCircle,
   Menu
 } from "lucide-react";
-import { useGetMe, useGetPresence, useUpdatePresence, getGetPresenceQueryKey } from "@workspace/api-client-react";
+import { useGetMe } from "@workspace/api-client-react";
 import { UserRole } from "@workspace/api-client-react";
+import { useWebSocket } from "@/lib/websocket";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface AppLayoutProps {
@@ -32,38 +32,17 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { signOut } = useClerk();
   
   const { data: user, isLoading: isUserLoading } = useGetMe();
-  const { mutate: updatePresence } = useUpdatePresence();
-  
-  // Online presence
-  useEffect(() => {
-    if (!user) return;
-    
-    // Initial call
-    updatePresence();
-    
-    // Poll every 60 seconds
-    const interval = setInterval(() => {
-      updatePresence();
-    }, 60000);
-    
-    return () => clearInterval(interval);
-  }, [user, updatePresence]);
-
-  const { data: presenceData } = useGetPresence({
-    query: {
-      queryKey: getGetPresenceQueryKey(),
-      refetchInterval: 30000,
-    }
-  });
-
-  const onlineUsers = presenceData?.filter(p => {
-    const lastSeen = new Date(p.lastSeenAt).getTime();
-    return Date.now() - lastSeen < 120000; // 2 minutes
-  }) || [];
+  const { onlineUsers, unreadCount, setChatOpen } = useWebSocket();
 
   const role = user?.role;
 
-  const navItems = [
+  const navItems: Array<{
+    title: string;
+    href: string;
+    icon: typeof LayoutDashboard;
+    roles: UserRole[];
+    action?: () => void;
+  }> = [
     {
       title: "Dashboard",
       href: "/dashboard",
@@ -84,9 +63,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     },
     {
       title: "Chat",
-      href: "/chat",
+      href: "#chat",
       icon: MessageSquare,
       roles: [UserRole.CHIEF_ADMIN, UserRole.BIDDER_MANAGER, UserRole.BIDDER],
+      action: () => setChatOpen(true),
     },
     {
       title: "Candidate Profiles",
@@ -124,24 +104,45 @@ export function AppLayout({ children }: AppLayoutProps) {
       
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-1 px-2">
-          {visibleNavItems.map((item) => (
-            <Button
-              key={item.href}
-              variant={location.startsWith(item.href) && (item.href !== "/reports" || location === "/reports") ? "secondary" : "ghost"}
-              className={`w-full justify-start ${
-                location === item.href || (location.startsWith(item.href) && item.href !== "/reports")
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              }`}
-              asChild
-              data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-            >
-              <Link href={item.href}>
-                <item.icon className="mr-2 h-4 w-4" />
-                {item.title}
-              </Link>
-            </Button>
-          ))}
+          {visibleNavItems.map((item) => {
+            if (item.action) {
+              return (
+                <Button
+                  key={item.href}
+                  variant="ghost"
+                  className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  onClick={item.action}
+                  data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <item.icon className="mr-2 h-4 w-4" />
+                  {item.title}
+                  {unreadCount > 0 && (
+                    <span className="ml-auto w-5 h-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center font-medium">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              );
+            }
+            return (
+              <Button
+                key={item.href}
+                variant={location.startsWith(item.href) && (item.href !== "/reports" || location === "/reports") ? "secondary" : "ghost"}
+                className={`w-full justify-start ${
+                  location === item.href || (location.startsWith(item.href) && item.href !== "/reports")
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                }`}
+                asChild
+                data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <Link href={item.href}>
+                  <item.icon className="mr-2 h-4 w-4" />
+                  {item.title}
+                </Link>
+              </Button>
+            );
+          })}
         </nav>
       </ScrollArea>
 

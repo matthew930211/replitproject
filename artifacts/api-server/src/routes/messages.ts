@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { sql } from "drizzle-orm";
 import { db, messagesTable, usersTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
+import { broadcastMessage } from "../ws";
 
 const router: IRouter = Router();
 
@@ -28,14 +29,16 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const [msg] = await db.insert(messagesTable).values({ senderId: me.id, content }).returning();
-  res.status(201).json({
+  const messageData = {
     id: msg.id,
     senderId: msg.senderId,
     senderName: me.name,
     senderRole: me.role,
     content: msg.content,
     createdAt: msg.createdAt,
-  });
+  };
+  broadcastMessage(messageData);
+  res.status(201).json(messageData);
 });
 
 export default router;
