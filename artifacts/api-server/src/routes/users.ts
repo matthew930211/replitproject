@@ -157,17 +157,6 @@ router.post("/users/sync", async (req, res): Promise<void> => {
     return;
   }
 
-  const byClerkId = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
-  if (byClerkId.length > 0) {
-    const u = byClerkId[0];
-    if (!u.isActive) {
-      res.status(403).json({ error: "Account deactivated" });
-      return;
-    }
-    res.json({ id: u.id, clerkId: u.clerkId, email: u.email, name: u.name, role: u.role, managerId: u.managerId, isActive: u.isActive, createdAt: u.createdAt, updatedAt: u.updatedAt });
-    return;
-  }
-
   let verifiedEmail: string;
   let verifiedName: string;
   try {
@@ -178,9 +167,32 @@ router.post("/users/sync", async (req, res): Promise<void> => {
       return;
     }
     verifiedEmail = primaryEmail.emailAddress;
-    verifiedName = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || "New User";
+    const fullName = `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim();
+    verifiedName = fullName
+      || clerkUser.username
+      || verifiedEmail.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+      || "User";
   } catch {
     res.status(503).json({ error: "Unable to verify identity: Clerk API unavailable. Please retry." });
+    return;
+  }
+
+  const byClerkId = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
+  if (byClerkId.length > 0) {
+    const u = byClerkId[0];
+    if (!u.isActive) {
+      res.status(403).json({ error: "Account deactivated" });
+      return;
+    }
+    if (u.name !== verifiedName || u.email !== verifiedEmail) {
+      const [updated] = await db.update(usersTable)
+        .set({ name: verifiedName, email: verifiedEmail })
+        .where(eq(usersTable.id, u.id))
+        .returning();
+      res.json({ id: updated.id, clerkId: updated.clerkId, email: updated.email, name: updated.name, role: updated.role, managerId: updated.managerId, isActive: updated.isActive, createdAt: updated.createdAt, updatedAt: updated.updatedAt });
+      return;
+    }
+    res.json({ id: u.id, clerkId: u.clerkId, email: u.email, name: u.name, role: u.role, managerId: u.managerId, isActive: u.isActive, createdAt: u.createdAt, updatedAt: u.updatedAt });
     return;
   }
 
