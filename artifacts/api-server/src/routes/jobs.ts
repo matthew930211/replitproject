@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db, jobsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
@@ -25,18 +25,36 @@ function formatJob(j: typeof jobsTable.$inferSelect, creatorName?: string | null
 }
 
 router.get("/jobs", requireAuth, async (req, res): Promise<void> => {
-  const jobs = await db.select().from(jobsTable).orderBy(desc(jobsTable.date));
+  const me = req.appUser!;
+  const isBidder = me.role === "BIDDER";
+
+  let jobRows;
+  if (isBidder) {
+    jobRows = await db
+      .select()
+      .from(jobsTable)
+      .where(eq(jobsTable.createdById, me.id))
+      .orderBy(desc(jobsTable.date));
+  } else {
+    jobRows = await db.select().from(jobsTable).orderBy(desc(jobsTable.date));
+  }
+
   const users = await db.select().from(usersTable);
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
-  res.json(jobs.map((j) => formatJob(j, userMap[j.createdById ?? -1]?.name)));
+  res.json(jobRows.map((j) => formatJob(j, userMap[j.createdById ?? -1]?.name)));
 });
 
 router.get("/jobs/:id", requireAuth, async (req, res): Promise<void> => {
+  const me = req.appUser!;
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(rawId, 10);
   const [job] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
   if (!job) {
     res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  if (me.role === "BIDDER" && job.createdById !== me.id) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
   const creator = job.createdById
@@ -68,10 +86,21 @@ router.post("/jobs", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.put("/jobs/:id", requireAuth, async (req, res): Promise<void> => {
+  const me = req.appUser!;
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(rawId, 10);
-  const { date, companyName, jobTitle, detailLink, requiredSkills, employmentType, status, evaluationStatus, evaluationComments } = req.body;
 
+  const [existing] = await db.select().from(jobsTable).where(eq(jobsTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  if (me.role === "BIDDER" && existing.createdById !== me.id) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const { date, companyName, jobTitle, detailLink, requiredSkills, employmentType, status, evaluationStatus, evaluationComments } = req.body;
   const updateData: Record<string, unknown> = {};
   if (date !== undefined) updateData.date = new Date(date);
   if (companyName !== undefined) updateData.companyName = companyName;
@@ -84,10 +113,6 @@ router.put("/jobs/:id", requireAuth, async (req, res): Promise<void> => {
   if (evaluationComments !== undefined) updateData.evaluationComments = evaluationComments || null;
 
   const [job] = await db.update(jobsTable).set(updateData).where(eq(jobsTable.id, id)).returning();
-  if (!job) {
-    res.status(404).json({ error: "Job not found" });
-    return;
-  }
   const creator = job.createdById
     ? (await db.select().from(usersTable).where(eq(usersTable.id, job.createdById)))[0]
     : null;

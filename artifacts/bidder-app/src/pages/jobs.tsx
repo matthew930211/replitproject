@@ -246,6 +246,7 @@ export default function Jobs() {
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium">Evaluation</th>
                     <th className="px-4 py-3 font-medium">Skills</th>
+                    {isAdmin && <th className="px-4 py-3 font-medium">Bidder</th>}
                     <th className="px-4 py-3 font-medium">Updated</th>
                     <th className="px-4 py-3 font-medium text-right">Actions</th>
                   </tr>
@@ -288,6 +289,11 @@ export default function Jobs() {
                       <td className="px-4 py-3 max-w-[200px] truncate text-muted-foreground" title={job.requiredSkills ?? ""}>
                         {job.requiredSkills || "—"}
                       </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3 whitespace-nowrap font-medium text-sm">
+                          {job.createdByName || "—"}
+                        </td>
+                      )}
                       <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">
                         {new Date(job.updatedAt).toLocaleString()}
                       </td>
