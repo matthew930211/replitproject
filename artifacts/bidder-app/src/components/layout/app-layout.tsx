@@ -196,7 +196,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <>
                 <span className="text-sm font-medium truncate">{user?.name}</span>
                 <span className="text-[10px] text-sidebar-foreground/70 truncate uppercase tracking-wider">
-                  {user?.role.replace('_', ' ')}
+                  {user?.role?.replace('_', ' ')}
                 </span>
               </>
             )}
