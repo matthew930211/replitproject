@@ -47,7 +47,7 @@ Full-stack Bidder Management Platform with role-based access control, daily work
 - **BIDDER**: Own reports, chat, profiles they've been granted access to (read-only)
 
 ## Key API Endpoints
-- `POST /api/users/sync` — Auto-register Clerk user in DB after sign-in
+- `POST /api/users/sync` — Auto-register Clerk user in DB after sign-in/sign-up (new users get BIDDER role by default)
 - `GET /api/users/me` — Get current user with role
 - `GET/POST /api/reports` — List/create daily reports
 - `GET/POST /api/reports/:reportId/feedback` — Report feedback thread

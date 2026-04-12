@@ -131,12 +131,9 @@ function UserSync() {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
         <div className="max-w-md w-full text-center space-y-4 rounded-lg border bg-card p-8 shadow">
-          <div className="text-2xl font-semibold">Access Not Provisioned</div>
+          <div className="text-2xl font-semibold">Account Deactivated</div>
           <p className="text-muted-foreground">
-            Your account has not been set up in the system yet. Please contact an administrator to get access.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            If you believe this is an error, make sure you are using the email address your administrator used to invite you.
+            Your account has been deactivated. Please contact an administrator for assistance.
           </p>
           <button
             onClick={() => signOut()}
